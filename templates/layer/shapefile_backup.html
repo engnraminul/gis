@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Map Layer View {% endblock %}
+
+{% block head %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload and Render Shapefile</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+{% endblock %}
+
+{% block body %}
+    <div id="shp-input">
+        <input type="file" id="fileInput" accept=".zip" multiple onchange="handleFileSelect(event)" />
+    </div>
+    <div id="layerToggle"></div>
+    <div id="map"></div>
+
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#myModal">
+        Attributes
+    </button>
+
+    <!-- The Modal -->
+    <div class="modal" id="myModal">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <!-- Modal Header -->
+                <div class="modal-header">
+                    <h4 class="modal-title">GIS Attributes</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <!-- Modal body -->
+                <div class="modal-body">
+                    <select id="shapefileSelect" onchange="updateAttributeTable()"></select>
+                    <div id="attributeTableContainer"></div>
+                </div>
+                <!-- Modal footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/shpjs/dist/shp.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script>
+        var map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var geocoder = L.Control.Geocoder.nominatim();
+        var searchControl = L.Control.geocoder({
+            query: '',
+            placeholder: 'Search for a location...',
+            defaultMarkGeocode: false
+        }).addTo(map);
+
+        searchControl.on('markgeocode', function(e) {
+            var latlng = e.geocode.center;
+            map.setView(latlng, 16);
+            L.marker(latlng).addTo(map)
+                .bindPopup(e.geocode.name)
+                .openPopup();
+        });
+
+        var loadedLayers = [];
+
+        function handleFileSelect(event) {
+            var files = event.target.files;
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var reader = new FileReader();
+                reader.onload = (function(file) {
+                    return function(event) {
+                        loadShapefile(event.target.result, file.name);
+                    };
+                })(file);
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function loadShapefile(fileContent, fileName) {
+            shp(fileContent).then(function(geojson) {
+                var layer = L.geoJSON(geojson);
+                layer.addTo(map);
+                map.fitBounds(layer.getBounds());
+                loadedLayers.push({ name: fileName, layer: layer, geojson: geojson });
+                updateLayerToggle();
+                updateShapefileSelect();
+            }).catch(function(error) {
+                console.error("Error loading Shapefile:", error);
+                alert("Error loading Shapefile. Please make sure the files are valid.");
+            });
+        }
+
+        function updateLayerToggle() {
+            var layerToggleDiv = document.getElementById("layerToggle");
+            layerToggleDiv.innerHTML = "";
+            loadedLayers.forEach(function(loadedLayer) {
+                var checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = true;
+                checkbox.onchange = function() {
+                    if (this.checked) {
+                        map.addLayer(loadedLayer.layer);
+                    } else {
+                        map.removeLayer(loadedLayer.layer);
+                    }
+                };
+                var label = document.createElement("label");
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(loadedLayer.name));
+                var container = document.createElement("div");
+                container.appendChild(label);
+                layerToggleDiv.appendChild(container);
+                layerToggleDiv.appendChild(document.createElement("br"));
+            });
+        }
+
+        function updateShapefileSelect() {
+            var select = document.getElementById("shapefileSelect");
+            select.innerHTML = "";
+            loadedLayers.forEach(function(loadedLayer, index) {
+                var option = document.createElement("option");
+                option.value = index;
+                option.text = loadedLayer.name;
+                select.appendChild(option);
+            });
+            updateAttributeTable(); // Update table for the first shapefile by default
+        }
+
+        function updateAttributeTable() {
+            var select = document.getElementById("shapefileSelect");
+            var selectedLayer = loadedLayers[select.value];
+            populateAttributeTable(selectedLayer.geojson.features);
+        }
+
+        function populateAttributeTable(features) {
+            var container = document.getElementById("attributeTableContainer");
+            container.innerHTML = ""; // Clear existing table
+
+            if (features.length === 0) {
+                return;
+            }
+
+            var table = document.createElement("table");
+            var thead = document.createElement("thead");
+            var tbody = document.createElement("tbody");
+            var tfoot = document.createElement("tfoot");
+
+            // Create header row
+            var headerRow = document.createElement("tr");
+            var properties = Object.keys(features[0].properties);
+            properties.forEach(function(prop) {
+                var th = document.createElement("th");
+                th.appendChild(document.createTextNode(prop));
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            // Initialize sums object
+            var sums = {};
+            properties.forEach(function(prop) {
+                sums[prop] = 0;
+            });
+
+            // Create data rows
+            features.forEach(function(feature) {
+                var row = document.createElement("tr");
+                properties.forEach(function(prop) {
+                    var td = document.createElement("td");
+                    var value = feature.properties[prop];
+                    td.appendChild(document.createTextNode(value));
+                    row.appendChild(td);
+                    if (typeof value === 'number') {
+                        sums[prop] += value;
+                    }
+                });
+                tbody.appendChild(row);
+            });
+
+            // Create footer row for sums
+            var footerRow = document.createElement("tr");
+            properties.forEach(function(prop) {
+                var td = document.createElement("td");
+                td.appendChild(document.createTextNode(sums[prop]));
+                footerRow.appendChild(td);
+            });
+            tfoot.appendChild(footerRow);
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            table.appendChild(tfoot);
+            container.appendChild(table);
+        }
+    </script>
+
+
+
+
+
+    <style>
+        #layerToggle {
+            position: absolute;
+            top: 150px;
+            left: 11px;
+            z-index: 1000;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            display: block;
+            line-height: 10px;
+        }
+        #shp-input {
+            position: absolute;
+            top: 70px;
+            left: 50px;
+            z-index: 1000;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            display: block;
+            line-height: 10px;
+        }
+        table { 
+            width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid black; 
+        }
+        th, td { 
+            border: 1px solid black; padding: 8px; text-align: left; 
+        }
+        th { 
+            background-color: #f2f2f2; 
+        }
+
+        table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border: 1px solid black;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    height: 600px;
+    }
+    .modal-content {
+    margin-top: 7%;
+}
+    </style>
+{% endblock %}

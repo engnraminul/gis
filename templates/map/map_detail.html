@@ -1,0 +1,1586 @@
+{% extends 'base.html' %}
+{% block title %} Map Layer View {% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-kml/0.1.0/leaflet-kml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/0.3.0/leaflet.ajax.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+<script src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
+<script src="https://unpkg.com/@tmcw/togeojson@5.0.0/dist/togeojson.umd.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<!-- Leaflet.Measure CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-measure@3.3.0/dist/leaflet-measure.css" />
+<!-- Leaflet.Measure JS -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet-measure@3.3.0/dist/leaflet-measure.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-groupedlayercontrol@0.7.0/dist/leaflet.groupedlayercontrol.min.css" />
+<script src="https://unpkg.com/leaflet-groupedlayercontrol@0.7.0/dist/leaflet.groupedlayercontrol.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+<style>
+  .custom-popup-content {
+    max-width: 300px;
+    max-height: 200px;
+    overflow: auto;
+    word-break: break-all;
+  }
+  .leaflet-control-export {
+    background: white;
+    border: 1px solid #ccc;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    margin-left: 5px;
+    top: 70px!important;
+  }
+
+  input[type="color" i] {
+    appearance: auto;
+    inline-size: 15px;
+    block-size: 15px;
+    cursor: default;
+}
+
+.feature-label {
+  color: #222;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 2px 6px;
+  background: none !important;
+}
+
+/* Custom Leaflet Draw toolbar button styles */
+.leaflet-draw-toolbar a,
+.leaflet-draw-toolbar .leaflet-draw-toolbar-button {
+  border: 1px solid #007279 !important;
+}
+.leaflet-touch .leaflet-bar{
+  border: none !important;
+}
+
+.leaflet-control-zoom a{
+  border: 1px solid #007279 !important;
+}
+
+.compass img {
+    position: absolute;
+    bottom: 50px;
+    right: 30px;
+    z-index: 1000;
+}
+
+.leaflet-control-export {
+    background: white;
+    border: 1px solid #ccc;
+    padding: 2px 9px;
+    cursor: pointer;
+    font-size: 27px;
+    border-radius: 6px;
+    margin-left: 5px;
+    top: 186px !important;
+    color: #8f8e8e;
+    position: absolute;
+    right: 10px;
+    z-index: 999;
+}
+.leaflet-control-export:hover{
+  background: #007279;
+  color: #fff;
+}
+
+@media print {
+  #compass {
+    display: block !important;
+    position: fixed !important;
+    top: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 3002 !important;
+    background: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
+@media print {
+  #compass {
+    display: block !important;
+    position: fixed !important;
+    top: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 3002 !important;
+    background: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+  }
+}
+#compass {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  left: auto;
+  top: auto;
+  z-index: 3002;
+}
+@media print {
+  #compass {
+    position: fixed !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    top: auto !important;
+    z-index: 3002 !important;
+    display: block !important;
+    background: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Custom color for input[type=range] track and thumb */
+input[type="range"]::-webkit-slider-thumb {
+  background: #007279;
+  border: 2px solid #007279;
+}
+ */
+input[type="range"]::-moz-range-thumb {
+  background: #007279;
+  border: 2px solid #007279;
+}
+input[type="range"]::-moz-range-track {
+  background: #007279;
+}
+input[type="range"]::-ms-thumb {
+  background: #007279;
+  border: 2px solid #007279;
+}
+input[type="range"]::-ms-fill-lower,
+input[type="range"]::-ms-fill-upper {
+  background: #007279;
+}
+input[type="range"] {
+  accent-color: #007279; /* For modern browsers */
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div id="map" style="height: 90vh; width: 100%;"></div>
+<div id="export-btn" class="leaflet-control-export" title="Export Map (geojson)"><i class="fa-solid fa-download"></i></div>
+<div id="measure-info" style="position:absolute;bottom:10px;left:10px;z-index:1000;background:white;padding:4px 8px;border-radius:4px;display:none;"></div>
+<div id="compass" class="compass"><img src="https://gis.vnode.digital/media/icon/Compass-icons.png" width="100" height="100"></div>
+
+<!-- Legend Drawer Button -->
+<button id="legend-drawer-btn" title="Show/Hide Legend" style="position:fixed;left:0px;bottom:10px;z-index:1200;color:#fff;border:none;border-radius:0 6px 6px 0;padding:0px 12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:20px;transition:left 0.3s;">
+  <span id="legend-drawer-btn-icon">▶</span>
+</button>
+
+<!-- Legend Drawer -->
+<div id="legend-drawer" style="position:fixed;left:-380px;bottom:50px;min-width:360px; max-width: 400px; z-index:1100;background:white;padding:10px 10px 10px 10px;border-radius:0 8px 8px 0;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:left 0.3s;">
+  <div id="legend-header" style="font-size:16px;font-weight:bold;margin-bottom:6px; display: flex; align-items: center; justify-content: space-between; cursor:move;">
+    <strong>Legend & Labels</strong>
+    <button id="legend-close-btn" title="Close legend" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;color:#888;">&times;</button>
+  </div>
+  <div id="legend-body">
+    <label style="display:block;margin-bottom:6px;">
+      <input type="checkbox" id="toggle-labels"> Show Labels
+    </label>
+    <hr>
+    <div id="legend-content"></div>
+  </div>
+</div>
+
+<script>
+  
+  // Initialize the map
+  const map = L.map('map', {
+    zoomSnap: 0.10, // Allow zoom steps of 0.25
+    zoomDelta: 0.10 // Each zoom in/out step is 0.25
+  }).setView([20, 0], 2);
+
+  // Create a custom pane for circle markers to ensure they are always on top
+  map.createPane('topMarkers');
+  map.getPane('topMarkers').style.zIndex = 650;
+
+  // Base Layers
+  const openStreetMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 20,
+    attribution: '<span style="color:#007279;font-weight:bold;"> Developed by : <a href="https://vnode.digital/">vNode.digital</a></span>'
+  });
+  openStreetMapLayer.addTo(map); // Add default base layer
+
+  // Add Imagery Map (Esri World Imagery)
+  const imageryLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 20,
+    attribution: '<span style="color:#007279;font-weight:bold;"> Developed by : <a href="https://vnode.digital/">vNode.digital</a></span>'
+  });
+
+  const baseLayers = {
+    "OpenStreetMap": openStreetMapLayer,
+    "Imagery Map": imageryLayer
+  };
+
+  // Overlay Layers - this object will be populated with file layers and drawnItems
+  const overlayMaps = {};
+
+  // FeatureGroup to store user-drawn features
+  const drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems); // Add to map so it's available for drawing
+  overlayMaps["Drawn Features"] = drawnItems; // Add to layer control options
+
+  // Initialize Layer Control
+  // It will be populated with file-based layers as they are loaded
+  const layerControl = L.control.layers(baseLayers, overlayMaps).addTo(map);
+  
+  // Get mapfile URLs from Django context
+  const mapfile = {{ mapfile|safe }};
+
+  // Default colors for each geometry type
+  let geometryColors = {
+    Point: "#3388ff",
+    LineString: "#3388ff",
+    Polygon: "#3388ff"
+  };
+
+  const highlightStyle = {
+    weight: 6,
+    color: '#FFD700',
+    fillColor: '#FFD700',
+    fillOpacity: 0.7 // Hover opacity 0.7
+  };
+  const resetHighlightStyle = (feature, color) => {
+    if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
+      return { color: color, weight: 4 };
+    }
+    if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+      return { color: color, fillColor: color, weight: 2, fillOpacity: 0.3 }; // Reset to 0.3
+    }
+    if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+      return { color: color, fillColor: color, weight: 2, radius: 8, fillOpacity: 0.3 }; // Always 0.3 for points
+    }
+    return {};
+  };
+
+  // Process each file URL
+  mapfile.forEach(url => {
+    const ext = url.split('.').pop().toLowerCase();
+    let displayName = url.substring(url.lastIndexOf('/') + 1); // Get filename for display
+    // Use a more descriptive name if possible, e.g., remove extension
+    const lastDotIndex = displayName.lastIndexOf('.');
+    if (lastDotIndex > 0) {
+        displayName = displayName.substring(0, lastDotIndex);
+    }
+
+    switch(ext) {
+      case 'geojson':
+        fetch(url)
+          .then(response => response.json())
+          .then(data => {
+            const geoJsonLayer = L.geoJSON(data, {
+              pointToLayer: function(feature, latlng) {
+                return L.circleMarker(latlng, {
+                  pane: 'topMarkers',
+                  radius: 8,
+                  fillColor: geometryColors.Point,
+                  color: "#222",
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.3 // Always 0.3 for points
+                });
+              },
+              style: function(feature) {
+                if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
+                  return { color: geometryColors.LineString, weight: 4 };
+                }
+                if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                  return { color: geometryColors.Polygon, fillColor: geometryColors.Polygon, weight: 2, fillOpacity: 0.3 };
+                }
+                return {};
+              },
+              onEachFeature: (feature, layer) => {
+                if (feature.properties) {
+                  // Try to find a label property
+                  const labelProps = ['name', 'label', 'Name', 'NAME', 'desc', 'Desc', 'DESC'];
+                  let labelText = null;
+                  for (const prop of labelProps) {
+                    if (feature.properties[prop]) {
+                      labelText = feature.properties[prop];
+                      break;
+                    }
+                  }
+                  layer._labelText = labelText;
+                  let popupContent = '<div class="custom-popup-content"><table style="width:100%;border-collapse:collapse;">';
+                  for (const key in feature.properties) {
+                    popupContent += `<tr><td style='font-weight:bold;border:1px solid #ddd;padding:2px 6px;'>${key}</td><td style='border:1px solid #ddd;padding:2px 6px;'>${feature.properties[key]}</td></tr>`;
+                  }
+                  popupContent += '</table></div>';
+                  layer.bindPopup(popupContent);
+                }
+
+                // Store original color for reset
+                layer._originalColor = layer.options.color;
+
+                layer.on('mouseover', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 6, fillOpacity: 0.7 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    this.setStyle && this.setStyle(highlightStyle);
+                  }
+                  if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                    this.bringToFront && this.bringToFront();
+                  }
+                });
+                layer.on('mouseout', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, fillOpacity: 0.3 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    // Use the current color from fileColors
+                    const gtype = feature.geometry.type;
+                    let color = fileColors[displayName];
+                    if (gtype === "LineString" || gtype === "MultiLineString") {
+                      this.setStyle && this.setStyle({ color: color, weight: 4 });
+                    }
+                  }
+                });
+                // Optional: Highlight on click
+                layer.on('click', function(e) {
+                  this.setStyle && this.setStyle(highlightStyle);
+                  setTimeout(() => {
+                    this.setStyle && this.setStyle(resetHighlightStyle(feature, fileColors[displayName]));
+                  }, 500); // Highlight for 0.5s
+                });
+              }
+            }).addTo(map); // Add to map directly
+            layerControl.addOverlay(geoJsonLayer, displayName + " (GeoJSON)");
+            if (geoJsonLayer.getBounds && geoJsonLayer.getBounds().isValid()) {
+                map.fitBounds(geoJsonLayer.getBounds());
+            }
+            const types = getGeometryTypes(data);
+            fileColors[displayName] = getRandomColor();
+            fileLegends[displayName] = { types, filetype: "GeoJSON", layer: geoJsonLayer };
+            updateLegend();
+            updateLayerColors();
+          })
+          .catch(error => console.error('Error loading GeoJSON:', error));
+        break;
+
+      case 'kmz':
+        fetch(url)
+          .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.arrayBuffer();
+          })
+          .then(data => JSZip.loadAsync(data))
+          .then(zip => {
+            const kmlFile = Object.values(zip.files).find(file => file.name.toLowerCase() === 'doc.kml');
+            if (!kmlFile) throw new Error('No doc.kml found in KMZ file');
+            return kmlFile.async('text');
+          })
+          .then(kmlText => {
+            const parser = new DOMParser();
+            const kmlDom = parser.parseFromString(kmlText, 'text/xml');
+            const geojson = toGeoJSON.kml(kmlDom);
+            const kmzLayer = L.geoJSON(geojson, {
+              pointToLayer: function(feature, latlng) {
+                return L.circleMarker(latlng, {
+                  pane: 'topMarkers',
+                  radius: 8,
+                  fillColor: geometryColors.Point,
+                  color: "#222",
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.3 // Always 0.3 for points
+                });
+              },
+              style: function(feature) {
+                if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
+                  return { color: geometryColors.LineString, weight: 4 };
+                }
+                if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                  return { color: geometryColors.Polygon, fillColor: geometryColors.Polygon, weight: 2, fillOpacity: 0.3 };
+                }
+                return {};
+              },
+              onEachFeature: (feature, layer) => {
+                if (feature.properties && Object.keys(feature.properties).length > 0) {
+                  // Try to find a label property
+                  const labelProps = ['name', 'label', 'Name', 'NAME', 'desc', 'Desc', 'DESC'];
+                  let labelText = null;
+                  for (const prop of labelProps) {
+                    if (feature.properties[prop]) {
+                      labelText = feature.properties[prop];
+                      break;
+                    }
+                  }
+                  layer._labelText = labelText;
+                  let popupContent = '<div class="custom-popup-content"><table style="width:100%;border-collapse:collapse;">';
+                  for (const key in feature.properties) {
+                    popupContent += `<tr><td style='font-weight:bold;border:1px solid #ddd;padding:2px 6px;'>${key}</td><td style='border:1px solid #ddd;padding:2px 6px;'>${feature.properties[key]}</td></tr>`;
+                  }
+                  popupContent += '</table></div>';
+                  layer.bindPopup(popupContent);
+                } else {
+                  layer._labelText = null;
+                }
+
+                // Store original color for reset
+                layer._originalColor = layer.options.color;
+
+                layer.on('mouseover', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 6, fillOpacity: 0.7 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    this.setStyle && this.setStyle(highlightStyle);
+                  }
+                  if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                    this.bringToFront && this.bringToFront();
+                  }
+                });
+                layer.on('mouseout', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, fillOpacity: 0.3 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    // Use the current color from fileColors
+                    const gtype = feature.geometry.type;
+                    let color = fileColors[displayName];
+                    if (gtype === "LineString" || gtype === "MultiLineString") {
+                      this.setStyle && this.setStyle({ color: color, weight: 4 });
+                    }
+                  }
+                });
+                // Optional: Highlight on click
+                layer.on('click', function(e) {
+                  this.setStyle && this.setStyle(highlightStyle);
+                  setTimeout(() => {
+                    this.setStyle && this.setStyle(resetHighlightStyle(feature, fileColors[displayName]));
+                  }, 500); // Highlight for 0.5s
+                });
+              }
+            }).addTo(map); // Add to map directly
+            layerControl.addOverlay(kmzLayer, displayName + " (KMZ)");
+            if (kmzLayer.getBounds && kmzLayer.getBounds().isValid()) {
+              map.fitBounds(kmzLayer.getBounds());
+            }
+            const types = getGeometryTypes(geojson);
+            fileColors[displayName] = getRandomColor();
+            fileLegends[displayName] = { types, filetype: "KMZ", layer: kmzLayer };
+            updateLegend();
+            updateLayerColors();
+          })
+          .catch(error => {
+            console.error('Error loading KMZ:', error);
+            alert('Error loading KMZ file: ' + error.message);
+          });
+        break;
+
+      case 'kml':
+        fetch(url)
+          .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.text();
+          })
+          .then(kmlText => {
+            const parser = new DOMParser();
+            const kmlDom = parser.parseFromString(kmlText, 'text/xml');
+            const geojson = toGeoJSON.kml(kmlDom);
+            const kmlLayer = L.geoJSON(geojson, {
+              pointToLayer: function(feature, latlng) {
+                return L.circleMarker(latlng, {
+                  pane: 'topMarkers',
+                  radius: 8,
+                  fillColor: geometryColors.Point,
+                  color: "#222",
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.3 // Always 0.3 for points
+                });
+              },
+              style: function(feature) {
+                if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
+                  return { color: geometryColors.LineString, weight: 4 };
+                }
+                if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                  return { color: geometryColors.Polygon, fillColor: geometryColors.Polygon, weight: 2, fillOpacity: 0.3 };
+                }
+                return {};
+              },
+              onEachFeature: (feature, layer) => {
+                if (feature.properties && Object.keys(feature.properties).length > 0) {
+                  // Try to find a label property
+                  const labelProps = ['name', 'label', 'Name', 'NAME', 'desc', 'Desc', 'DESC'];
+                  let labelText = null;
+                  for (const prop of labelProps) {
+                    if (feature.properties[prop]) {
+                      labelText = feature.properties[prop];
+                      break;
+                    }
+                  }
+                  layer._labelText = labelText;
+                  let popupContent = '<div class="custom-popup-content"><table style="width:100%;border-collapse:collapse;">';
+                  for (const key in feature.properties) {
+                    popupContent += `<tr><td style='font-weight:bold;border:1px solid #ddd;padding:2px 6px;'>${key}</td><td style='border:1px solid #ddd;padding:2px 6px;'>${feature.properties[key]}</td></tr>`;
+                  }
+                  popupContent += '</table></div>';
+                  layer.bindPopup(popupContent);
+                } else {
+                  layer._labelText = null;
+                }
+
+                // Store original color for reset
+                layer._originalColor = layer.options.color;
+
+                layer.on('mouseover', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 6, fillOpacity: 0.7 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    this.setStyle && this.setStyle(highlightStyle);
+                  }
+                  if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                    this.bringToFront && this.bringToFront();
+                  }
+                });
+                layer.on('mouseout', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, fillOpacity: 0.3 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    // Use the current color from fileColors
+                    const gtype = feature.geometry.type;
+                    let color = fileColors[displayName];
+                    if (gtype === "LineString" || gtype === "MultiLineString") {
+                      this.setStyle && this.setStyle({ color: color, weight: 4 });
+                    }
+                  }
+                });
+                // Optional: Highlight on click
+                layer.on('click', function(e) {
+                  this.setStyle && this.setStyle(highlightStyle);
+                  setTimeout(() => {
+                    this.setStyle && this.setStyle(resetHighlightStyle(feature, fileColors[displayName]));
+                  }, 500); // Highlight for 0.5s
+                });
+              }
+            }).addTo(map); // Add to map directly
+            layerControl.addOverlay(kmlLayer, displayName + " (KML)");
+            if (kmlLayer.getBounds && kmlLayer.getBounds().isValid()) {
+              map.fitBounds(kmlLayer.getBounds());
+            }
+            const types = getGeometryTypes(geojson);
+            fileColors[displayName] = getRandomColor();
+            fileLegends[displayName] = { types, filetype: "KML", layer: kmlLayer };
+            updateLegend();
+            updateLayerColors();
+          })
+          .catch(error => {
+            console.error('Error loading KML:', error);
+            alert('Error loading KML file: ' + error.message);
+          });
+        break;
+
+      case 'zip': // Shapefiles
+        shp(url)
+          .then(geojson => {
+            const shpLayer = L.geoJSON(geojson, {
+              pointToLayer: function(feature, latlng) {
+                return L.circleMarker(latlng, {
+                  pane: 'topMarkers',
+                  radius: 8,
+                  fillColor: geometryColors.Point,
+                  color: "#222",
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.3 // Always 0.3 for points
+                });
+              },
+              style: function(feature) {
+                if (feature.geometry.type === "LineString" || feature.geometry.type === "MultiLineString") {
+                  return { color: geometryColors.LineString, weight: 4 };
+                }
+                if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                  return { color: geometryColors.Polygon, fillColor: geometryColors.Polygon, weight: 2, fillOpacity: 0.3 };
+                }
+                return {};
+              },
+              onEachFeature: (feature, layer) => {
+                if (feature.properties) {
+                  // Try to find a label property
+                  const labelProps = ['name', 'label', 'Name', 'NAME', 'desc', 'Desc', 'DESC'];
+                  let labelText = null;
+                  for (const prop of labelProps) {
+                    if (feature.properties[prop]) {
+                      labelText = feature.properties[prop];
+                      break;
+                    }
+                  }
+                  layer._labelText = labelText;
+                  let popupContent = '<div class="custom-popup-content"><table style="width:100%;border-collapse:collapse;">';
+                  for (const key in feature.properties) {
+                    popupContent += `<tr><td style='font-weight:bold;border:1px solid #ddd;padding:2px 6px;'>${key}</td><td style='border:1px solid #ddd;padding:2px 6px;'>${feature.properties[key]}</td></tr>`;
+                  }
+                  popupContent += '</table></div>';
+                  layer.bindPopup(popupContent);
+                }
+
+                // Store original color for reset
+                layer._originalColor = layer.options.color;
+
+                layer.on('mouseover', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 6, fillOpacity: 0.7 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    this.setStyle && this.setStyle(highlightStyle);
+                  }
+                  if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                    this.bringToFront && this.bringToFront();
+                  }
+                });
+                layer.on('mouseout', function(e) {
+                  if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, fillOpacity: 0.3 });
+                  } else if (feature.geometry.type === "Point" || feature.geometry.type === "MultiPoint") {
+                    this.setStyle && this.setStyle({ color: this.options.color, fillColor: this.options.fillColor, weight: 2, radius: 8, fillOpacity: 0.3 });
+                  } else {
+                    // Use the current color from fileColors
+                    const gtype = feature.geometry.type;
+                    let color = fileColors[displayName];
+                    if (gtype === "LineString" || gtype === "MultiLineString") {
+                      this.setStyle && this.setStyle({ color: color, weight: 4 });
+                    }
+                  }
+                });
+                // Optional: Highlight on click
+                layer.on('click', function(e) {
+                  this.setStyle && this.setStyle(highlightStyle);
+                  setTimeout(() => {
+                    this.setStyle && this.setStyle(resetHighlightStyle(feature, fileColors[displayName]));
+                  }, 500); // Highlight for 0.5s
+                });
+              }
+            }).addTo(map); // Add to map directly
+            layerControl.addOverlay(shpLayer, displayName + " (Shapefile)");
+            if (shpLayer.getBounds && shpLayer.getBounds().isValid()) {
+                map.fitBounds(shpLayer.getBounds());
+            }
+            const types = getGeometryTypes(geojson);
+            fileColors[displayName] = getRandomColor();
+            fileLegends[displayName] = { types, filetype: "Shapefile", layer: shpLayer };
+            updateLegend();
+            updateLayerColors();
+          })
+          .catch(error => console.error('Error loading Shapefile:', error));
+        break;
+
+      case 'csv':
+        fetch(url)
+          .then(response => response.text())
+          .then(csv => {
+            Papa.parse(csv, {
+              header: true,
+              dynamicTyping: true,
+              complete: function(results) {
+                const csvLayerGroup = L.featureGroup(); // Create a group for this CSV's markers
+                const bounds = [];
+                results.data.forEach(row => {
+                  const lat = row.latitude || row.lat || row.LAT || row.LATITUDE;
+                  const lng = row.longitude || row.lon || row.lng || row.LON || row.LONGITUDE;
+                  
+                  if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) { // Check for null/undefined too
+                    const marker = L.marker([lat, lng])
+                      .bindPopup(
+                        `<div class="custom-popup-content">` + // Added custom-popup-content div
+                        Object.entries(row)
+                          .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                          .join('<br>') +
+                        `</div>`
+                      );
+                    csvLayerGroup.addLayer(marker); // Add marker to the CSV's own layer group
+                    bounds.push([lat, lng]);
+                  }
+                });
+                
+                if (bounds.length > 0) {
+                  csvLayerGroup.addTo(map); // Add the group to the map
+                  layerControl.addOverlay(csvLayerGroup, displayName + " (CSV)");
+                  map.fitBounds(bounds);
+                }
+                const types = getGeometryTypes(csvLayerGroup.toGeoJSON());
+                fileColors[displayName] = getRandomColor();
+                fileLegends[displayName] = { types, filetype: "CSV", layer: csvLayerGroup };
+                updateLegend();
+                updateLayerColors();
+              },
+              error: function(error) {
+                console.error('Error parsing CSV:', error);
+              }
+            });
+          })
+          .catch(error => console.error('Error loading CSV:', error));
+        break;
+
+      default:
+        console.warn("Unsupported file type:", ext, url);
+    }
+  });
+
+  // Add Leaflet.draw controls
+  const drawControl = new L.Control.Draw({
+    edit: {
+      featureGroup: drawnItems, // Edits will apply to the "Drawn Features" layer
+      poly: { allowIntersection: false }
+    },
+    draw: {
+      polygon: true,
+      polyline: true,
+      rectangle: true,
+      circle: true,
+      marker: true,
+      circlemarker: true
+    }
+  });
+  map.addControl(drawControl);
+
+  // Measurement info
+  function showMeasurementInfo(content) {
+    const info = document.getElementById('measure-info');
+    info.innerHTML = content;
+    info.style.display = 'block';
+  }
+  function hideMeasurementInfo() {
+    document.getElementById('measure-info').style.display = 'none';
+  }
+
+  // Handle draw:created
+  map.on(L.Draw.Event.CREATED, function (e) {
+    const layer = e.layer;
+    if (layer instanceof L.CircleMarker || layer instanceof L.Marker) {
+      layer.setStyle && layer.setStyle({ fillColor: geometryColors.Point });
+    } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+      layer.setStyle && layer.setStyle({ color: geometryColors.LineString });
+    } else if (layer instanceof L.Polygon) {
+      layer.setStyle && layer.setStyle({ color: geometryColors.Polygon, fillColor: geometryColors.Polygon });
+    }
+    drawnItems.addLayer(layer);
+    // Show measurement
+    if (layer instanceof L.Polyline) {
+      const latlngs = layer.getLatLngs();
+      let len = 0;
+      for (let i = 1; i < latlngs.length; i++) {
+        len += latlngs[i - 1].distanceTo(latlngs[i]);
+      }
+      console.log('Polyline length:', len, 'interval:', 10000);
+      showMeasurementInfo('Length: ' + len.toFixed(2) + ' meters');
+    } else if (layer instanceof L.Polygon) {
+      const latlngs = layer.getLatLngs()[0];
+      let area = L.GeometryUtil.geodesicArea(latlngs);
+      showMeasurementInfo('Area: ' + area.toFixed(2) + ' m²');
+    } else {
+      hideMeasurementInfo();
+    }
+  });
+
+  // Handle draw:edited
+  map.on(L.Draw.Event.EDITED, function (e) {
+    let content = '';
+    e.layers.eachLayer(function(layer) {
+      if (layer instanceof L.Polyline) {
+        const latlngs = layer.getLatLngs();
+        let len = 0;
+        for (let i = 1; i < latlngs.length; i++) {
+          len += latlngs[i - 1].distanceTo(latlngs[i]);
+        }
+        content += 'Length: ' + len.toFixed(2) + ' meters<br>';
+      } else if (layer instanceof L.Polygon) {
+        const latlngs = layer.getLatLngs()[0];
+        let area = L.GeometryUtil.geodesicArea(latlngs);
+        content += 'Area: ' + area.toFixed(2) + ' m²<br>';
+      }
+    });
+    if (content) showMeasurementInfo(content);
+    else hideMeasurementInfo();
+  });
+
+  // Hide measurement info on draw:deleted
+  map.on(L.Draw.Event.DELETED, hideMeasurementInfo);
+
+  // Export GeoJSON
+  document.getElementById('export-btn').onclick = function() {
+    // Collect all features from loaded file layers
+    let allFeatures = [];
+
+    // fileLegends: { filename: { layer: ..., ... }, ... }
+    Object.values(fileLegends).forEach(info => {
+      if (info.layer && typeof info.layer.toGeoJSON === 'function') {
+        const geojson = info.layer.toGeoJSON();
+        if (geojson && geojson.features) {
+          allFeatures = allFeatures.concat(geojson.features);
+        }
+      }
+    });
+
+    // Add drawn features
+    const drawnGeoJSON = drawnItems.toGeoJSON();
+    if (drawnGeoJSON && drawnGeoJSON.features) {
+      allFeatures = allFeatures.concat(drawnGeoJSON.features);
+    }
+
+    // Create a single FeatureCollection
+    const exportGeoJSON = {
+      type: "FeatureCollection",
+      features: allFeatures
+    };
+
+    // Export as file
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportGeoJSON));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", "export.geojson");
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    document.body.removeChild(dlAnchor);
+  };
+
+  function updateLayerColors() {
+    Object.entries(fileLegends).forEach(([filename, info]) => {
+      const color = fileColors[filename];
+      const strokes = fileStrokes[filename] || {};
+      const opacity = fileOpacity[filename] !== undefined ? fileOpacity[filename] : 1.0;
+      if (info.layer && info.layer.setStyle) {
+        // For GeoJSON, KML, KMZ, Shapefile
+        info.layer.setStyle(feature => {
+          let style = { color: color, fillColor: color, opacity: opacity, fillOpacity: opacity };
+          if (feature.geometry) {
+            if (feature.geometry.type === 'Point' || feature.geometry.type === 'MultiPoint') {
+              style.weight = strokes['Point'] || 2;
+              style.radius = 8; // keep radius
+              style.fillOpacity = 0.3; // Always 0.3 for points
+            } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
+              style.weight = strokes['LineString'] || 4;
+              // For lines, opacity controls the stroke
+              style.opacity = opacity;
+            } else if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
+              style.weight = strokes['Polygon'] || 2;
+              // Always set fillOpacity for polygons to 0.3 regardless of legend slider
+              style.fillOpacity = 0.3;
+              // Border opacity can still be controlled by the slider
+              style.opacity = opacity;
+            }
+          }
+          return style;
+        });
+      } else if (info.layer && info.layer.eachLayer) {
+        // For marker groups (e.g., CSV)
+        info.layer.eachLayer(layer => {
+          if (layer.setStyle) {
+            // Only for circle markers
+            if (layer instanceof L.CircleMarker) {
+              layer.setStyle({ color: color, fillColor: color, weight: strokes['Point'] || 2, opacity: opacity, fillOpacity: 0.3 });
+            } else {
+              layer.setStyle({ color: color, fillColor: color, opacity: opacity, fillOpacity: opacity });
+            }
+          } else if (layer.setIcon) {
+            // For L.marker, you may want to set a colored icon
+          }
+        });
+      }
+    });
+  }
+
+  let fileLegends = {}; // filename: { types: [...], filetype: "...", layer: ... }
+  let fileColors = {};  // filename: "#color"
+  let fileStrokes = {}; // filename: { Point: number, LineString: number, Polygon: number }
+  let fileOpacity = {}; // filename: number (0.1 - 1.0)
+  let fileLabelToggles = {}; // filename: boolean
+
+  function getGeometryTypes(geojson) {
+    const types = new Set();
+    L.geoJSON(geojson, {
+      onEachFeature: function(feature) {
+        if (feature.geometry && feature.geometry.type) {
+          if (feature.geometry.type === "MultiPolygon" || feature.geometry.type === "Polygon") types.add("Polygon");
+          else if (feature.geometry.type === "MultiLineString" || feature.geometry.type === "LineString") types.add("LineString");
+          else if (feature.geometry.type === "MultiPoint" || feature.geometry.type === "Point") types.add("Point");
+        }
+      }
+    });
+    return Array.from(types);
+  }
+
+
+  function getGeometryIcon(type, color) {
+    switch (type) {
+      case "Point": return `<span style="color:${color};font-size:18px;">●</span>`;
+      case "LineString": return `<span style="color:${color};font-size:18px;">━</span>`;
+      case "Polygon": return `<span style="color:${color};font-size:18px;">■</span>`;
+      default: return "";
+    }
+  }
+
+  function updateLegend() {
+    const legendDiv = document.getElementById('legend-content');
+    legendDiv.innerHTML = '';
+    // Order: Point > LineString > Polygon
+    const geomOrder = { 'Point': 1, 'LineString': 2, 'Polygon': 3 };
+    Object.entries(fileLegends).forEach(([filename, info]) => {
+      // Sort types by custom order
+      const orderedTypes = [...info.types].sort((a, b) => (geomOrder[a] || 99) - (geomOrder[b] || 99));
+      // Show icons for all geometry types present in the file
+      const typeIcons = orderedTypes.map(type => getGeometryIcon(type, fileColors[filename])).join(' ');
+      // Prepare stroke width controls for each geometry type
+      let strokeControls = '';
+      if (!fileStrokes[filename]) fileStrokes[filename] = {};
+      orderedTypes.forEach(type => {
+        if (fileStrokes[filename][type] === undefined) {
+          fileStrokes[filename][type] = type === 'LineString' ? 4 : 2;
+        }
+        strokeControls += `
+          <label style="margin-left:8px;font-size:12px;">
+            <i class="fa fa-bars" aria-hidden="true"></i>
+            <input type="number" min="1" max="20" value="${fileStrokes[filename][type]}" data-filename="${filename}" data-geomtype="${type}" style="width:40px; height:20px; vertical-align:middle;">
+          </label>
+        `;
+      });
+      // Opacity control (default 1.0)
+      if (fileOpacity[filename] === undefined) fileOpacity[filename] = 1.0;
+      const opacityControl = `
+        <label style="margin-left:8px;font-size:12px;">
+          <span style="width: 10px; height: 10px; display: inline-block; background: linear-gradient(to right, #000, #fff);"></span>
+          <input type="range" min="0.1" max="1" step="0.05" value="${fileOpacity[filename]}" data-filename="${filename}" style="width:50px; vertical-align:middle;">
+          <span style="font-size:11px;">${fileOpacity[filename]}</span>
+        </label>
+      `;
+      // Label toggle (default true)
+      if (fileLabelToggles[filename] === undefined) fileLabelToggles[filename] = false;
+      const labelToggle = `
+        <label style="margin-left:8px;font-size:12px;">
+          <i class="fa fa-tag" aria-hidden="true"></i>
+          <input type="checkbox" data-filename="${filename}" class="file-label-toggle" ${fileLabelToggles[filename] ? 'checked' : ''}>
+          
+        </label>
+      `;
+      legendDiv.innerHTML += `
+        <div style="margin-bottom:4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); padding:4px; border-radius:4px;">
+          <span style="">${typeIcons} <strong style="font-size:14px; font-weight:500; width: 200px;"> ${filename}</strong></span>
+          <input type="color" value="${fileColors[filename]}" data-filename="${filename}" style="vertical-align:middle;margin-left:8px;">
+          ${strokeControls}
+          ${opacityControl}
+          ${labelToggle}
+        </div>
+        
+      `;
+    });
+
+    // Add event listeners for color inputs
+    legendDiv.querySelectorAll('input[type="color"]').forEach(input => {
+      input.addEventListener('input', function(e) {
+        const fname = e.target.getAttribute('data-filename');
+        fileColors[fname] = e.target.value;
+        // Update the icon color in the legend
+        // Find the icon span(s) for this filename and update their color
+        const parentDiv = e.target.closest('div');
+        if (parentDiv) {
+          parentDiv.querySelectorAll('span').forEach(span => {
+            // Only update if the span is a geometry icon (has font-size:18px)
+            if (span.style.fontSize === '18px') {
+              span.style.color = e.target.value;
+            }
+          });
+        }
+        updateLayerColors();
+      });
+    });
+
+    // Add event listeners for stroke width inputs
+    legendDiv.querySelectorAll('input[type="number"]').forEach(input => {
+      input.addEventListener('input', function(e) {
+        const fname = e.target.getAttribute('data-filename');
+        const gtype = e.target.getAttribute('data-geomtype');
+        fileStrokes[fname][gtype] = parseInt(e.target.value) || 1;
+        updateLayerColors();
+      });
+    });
+
+    // Add event listeners for opacity sliders
+    legendDiv.querySelectorAll('input[type="range"]').forEach(input => {
+      input.addEventListener('input', function(e) {
+        const fname = e.target.getAttribute('data-filename');
+        fileOpacity[fname] = parseFloat(e.target.value);
+        // Update the label next to the slider
+        e.target.nextElementSibling.textContent = fileOpacity[fname];
+        updateLayerColors();
+      });
+    });
+
+    // Add event listeners for label toggles
+    legendDiv.querySelectorAll('input.file-label-toggle').forEach(input => {
+      input.addEventListener('change', function(e) {
+        const fname = e.target.getAttribute('data-filename');
+        fileLabelToggles[fname] = e.target.checked;
+        updatePerFileLabelVisibility(fname);
+      });
+    });
+  }
+
+  function getRandomColor() {
+    // Generates a random color
+    return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+  }
+
+  // Store references to interval tooltips for cleanup
+  let intervalTooltips = [];
+
+  function addLabelsAlongPolyline(layer, labelText, intervalMeters = 10000) {
+    if (!layer.getLatLngs || !labelText) return;
+    let latlngs = layer.getLatLngs();
+    if (!Array.isArray(latlngs) || latlngs.length < 2) return;
+
+    // For MultiLineString, latlngs is an array of arrays
+    if (Array.isArray(latlngs[0])) {
+      latlngs.forEach(segment => {
+        addLabelsAlongPolylineSegment(segment, labelText, intervalMeters);
+      });
+    } else {
+      addLabelsAlongPolylineSegment(latlngs, labelText, intervalMeters);
+    }
+  }
+
+  function addLabelsAlongPolylineSegment(latlngs, labelText, intervalMeters) {
+    let totalLength = 0;
+    for (let i = 1; i < latlngs.length; i++) {
+      totalLength += latlngs[i - 1].distanceTo(latlngs[i]);
+    }
+    if (totalLength < intervalMeters) return;
+
+    for (let dist = intervalMeters; dist < totalLength; dist += intervalMeters) {
+      const interp = L.GeometryUtil.interpolateOnLine(map, latlngs, dist / totalLength);
+      if (interp && interp.latLng) {
+        const tooltip = L.tooltip({
+          permanent: true,
+          direction: 'top',
+          className: 'feature-label',
+          interactive: false
+        })
+        .setLatLng(interp.latLng)
+        .setContent(labelText)
+        .addTo(map);
+        intervalTooltips.push(tooltip);
+      }
+    }
+  }
+
+  function addLabelsAlongPolygonBoundary(layer, labelText, intervalMeters = 10000) {
+    if (!layer.getLatLngs || !labelText) return;
+    let latlngs = layer.getLatLngs();
+    if (!Array.isArray(latlngs) || latlngs.length === 0) return;
+
+    // For MultiPolygon, flatten to array of rings
+    if (Array.isArray(latlngs[0][0])) latlngs = latlngs.flat();
+
+    // Only use the outer ring (first ring)
+    let ring = latlngs[0];
+    if (!Array.isArray(ring) || ring.length < 2) return;
+
+    // Calculate total length
+    let totalLength = 0;
+    for (let i = 1; i < ring.length; i++) {
+      totalLength += ring[i - 1].distanceTo(ring[i]);
+    }
+    if (totalLength < intervalMeters) return;
+
+    // Place labels at intervals
+    for (let dist = intervalMeters; dist < totalLength; dist += intervalMeters) {
+      const interp = L.GeometryUtil.interpolateOnLine(map, ring, dist / totalLength);
+      if (interp && interp.latLng) {
+        const tooltip = L.tooltip({
+          permanent: true,
+          direction: 'top',
+          className: 'feature-label',
+          interactive: false
+        })
+        .setLatLng(interp.latLng)
+        .setContent(labelText)
+        .addTo(map);
+        intervalTooltips.push(tooltip);
+        console.log('Adding label at', dist, 'meters');
+      }
+    }
+  }
+
+  function showLabels() {
+    // Remove any previous interval tooltips
+    intervalTooltips.forEach(tip => map.removeLayer(tip));
+    intervalTooltips = [];
+
+    const bounds = map.getBounds();
+    map.eachLayer(layer => {
+      // For single features
+      if (layer._labelText && layer.getBounds && bounds.intersects(layer.getBounds())) {
+        layer.unbindTooltip && layer.unbindTooltip();
+        layer.bindTooltip(layer._labelText, {
+          direction: 'top',
+          className: 'feature-label',
+          interactive: false,
+          permanent: true
+        });
+        // Add interval labels for long polylines
+        if (layer.feature) {
+          const gtype = layer.feature.geometry.type;
+          if (gtype === "LineString" || gtype === "MultiLineString") {
+            addLabelsAlongPolyline(layer, layer._labelText, 10000);
+          } else if (gtype === "Polygon" || gtype === "MultiPolygon") {
+            addLabelsAlongPolygonBoundary(layer, layer._labelText, 10000);
+          }
+        }
+      } else if (layer._labelText && layer.getLatLng && !bounds.contains(layer.getLatLng())) {
+        layer.unbindTooltip && layer.unbindTooltip();
+      }
+      // For feature groups
+      if (layer instanceof L.FeatureGroup) {
+        layer.eachLayer(subLayer => {
+          if (subLayer._labelText && subLayer.getLatLng && bounds.contains(subLayer.getLatLng())) {
+            subLayer.unbindTooltip && subLayer.unbindTooltip();
+            subLayer.bindTooltip(subLayer._labelText, {
+              direction: 'top',
+              className: 'feature-label',
+              interactive: false,
+              permanent: true
+            });
+            // Add interval labels for long polylines
+            if (subLayer.feature) {
+              const gtype = subLayer.feature.geometry.type;
+              if (gtype === "LineString" || gtype === "MultiLineString") {
+                addLabelsAlongPolyline(subLayer, subLayer._labelText, 10000);
+              } else if (gtype === "Polygon" || gtype === "MultiPolygon") {
+                addLabelsAlongPolygonBoundary(subLayer, subLayer._labelText, 10000);
+              }
+            }
+          } else if (subLayer._labelText && subLayer.getLatLng && !bounds.contains(subLayer.getLatLng())) {
+            subLayer.unbindTooltip && subLayer.unbindTooltip();
+          }
+        });
+      }
+    });
+  }
+
+  function hideLabels() {
+    // Remove any previous interval tooltips
+    intervalTooltips.forEach(tip => map.removeLayer(tip));
+    intervalTooltips = [];
+
+    map.eachLayer(layer => {
+      if (layer.getTooltip && layer.getTooltip()) {
+        layer.unbindTooltip();
+      }
+      if (layer instanceof L.FeatureGroup) {
+        layer.eachLayer(subLayer => {
+          if (subLayer.getTooltip && subLayer.getTooltip()) {
+            subLayer.unbindTooltip();
+          }
+        });
+      }
+    });
+  }
+
+  const LABEL_MIN_ZOOM = 15;
+  let labelsEnabled = false;
+  document.getElementById('toggle-labels').addEventListener('change', function(e) {
+    const checked = e.target.checked;
+    // Toggle all per-file label toggles at once
+    Object.keys(fileLegends).forEach(fname => {
+      fileLabelToggles[fname] = checked;
+      updatePerFileLabelVisibility(fname);
+      // Also update the checkbox in the legend UI
+      const legendDiv = document.getElementById('legend-content');
+      const cb = legendDiv.querySelector(`input.file-label-toggle[data-filename="${fname}"]`);
+      if (cb) cb.checked = checked;
+    });
+  });
+
+  // On zoom/move, re-apply per-file label visibility
+  map.on('zoomend', function() {
+    Object.keys(fileLegends).forEach(fname => updatePerFileLabelVisibility(fname));
+  });
+  map.on('moveend', function() {
+    Object.keys(fileLegends).forEach(fname => updatePerFileLabelVisibility(fname));
+  });
+
+  // On initial load, hide all labels
+  Object.keys(fileLegends).forEach(fname => updatePerFileLabelVisibility(fname));
+
+  function updatePerFileLabelVisibility(filename) {
+    intervalTooltips.forEach(tip => map.removeLayer(tip));
+    intervalTooltips = [];
+    const info = fileLegends[filename];
+    if (!info) return;
+    const show = fileLabelToggles[filename];
+    const bounds = map.getBounds();
+
+    // Hide all labels for this file first
+    if (info.layer && info.layer.eachLayer) {
+      info.layer.eachLayer(layer => {
+        if (layer.getTooltip && layer.getTooltip()) {
+          layer.unbindTooltip();
+        }
+      });
+    } else if (info.layer && info.layer.getTooltip && info.layer.getTooltip()) {
+      info.layer.unbindTooltip();
+    }
+    if (!show) return;
+
+    // Only show labels if zoom is high enough
+    if (map.getZoom() < LABEL_MIN_ZOOM) return;
+
+    // Show labels for this file, but only if in bounds
+    if (info.layer && info.layer.eachLayer) {
+      info.layer.eachLayer(layer => {
+        let inBounds = false;
+        if (layer.getBounds && bounds.intersects(layer.getBounds())) {
+          inBounds = true;
+        } else if (layer.getLatLng && bounds.contains(layer.getLatLng())) {
+          inBounds = true;
+        }
+        if (layer._labelText && inBounds) {
+          layer.bindTooltip(layer._labelText, {
+            direction: 'top',
+            className: 'feature-label',
+            interactive: false,
+            permanent: true
+          });
+          // Add interval labels for long polylines
+          if (layer.feature) {
+            const gtype = layer.feature.geometry.type;
+            if (gtype === "LineString" || gtype === "MultiLineString") {
+              addLabelsAlongPolyline(layer, layer._labelText, 10000);
+            } else if (gtype === "Polygon" || gtype === "MultiPolygon") {
+              addLabelsAlongPolygonBoundary(layer, layer._labelText, 10000);
+            }
+          }
+        }
+      });
+    } else if (info.layer && info.layer._labelText) {
+      // For single layer, check bounds
+      let inBounds = false;
+      if (info.layer.getBounds && bounds.intersects(info.layer.getBounds())) {
+        inBounds = true;
+      } else if (info.layer.getLatLng && bounds.contains(info.layer.getLatLng())) {
+        inBounds = true;
+      }
+      if (inBounds) {
+        info.layer.bindTooltip(info.layer._labelText, {
+          direction: 'top',
+          className: 'feature-label',
+          interactive: false,
+          permanent: true
+        });
+      }
+    }
+  }
+
+  // Make the legend draggable
+  (function() {
+    const legend = document.getElementById('legend-drawer');
+    const header = document.getElementById('legend-header');
+    const closeBtn = document.getElementById('legend-close-btn');
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    header.style.cursor = 'move';
+
+    header.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      // Get bounding rect for more accurate positioning
+      const rect = legend.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      startLeft = rect.left;
+      startTop = rect.top;
+      legend.style.zIndex = 2001;
+      document.body.style.userSelect = 'none';
+      // Prevent text selection
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (isDragging) {
+        // Calculate new position
+        let newLeft = e.clientX - offsetX;
+        let newTop = e.clientY - offsetY;
+        // Prevent moving out of viewport (optional, can adjust)
+        newLeft = Math.max(0, Math.min(window.innerWidth - legend.offsetWidth, newLeft));
+        newTop = Math.max(0, Math.min(window.innerHeight - legend.offsetHeight, newTop));
+        legend.style.left = newLeft + 'px';
+        legend.style.top = newTop + 'px';
+        legend.style.right = 'auto';
+        legend.style.bottom = 'auto';
+        legend.style.position = 'fixed';
+        // Always keep close button at right side of legend
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.right = '8px';
+      }
+    });
+
+    document.addEventListener('mouseup', function(e) {
+      isDragging = false;
+      legend.style.zIndex = 1100;
+      document.body.style.userSelect = '';
+    });
+
+    // Always keep close button at right side of legend (on resize or open)
+    function updateCloseBtnPosition() {
+      closeBtn.style.position = 'absolute';
+      closeBtn.style.right = '8px';
+    }
+    window.addEventListener('resize', updateCloseBtnPosition);
+    updateCloseBtnPosition();
+  })();
+
+  // Add legend close button functionality
+  (function() {
+    const legend = document.getElementById('legend');
+    const closeBtn = document.getElementById('legend-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        legend.style.display = 'none';
+      });
+    }
+  })();
+
+  // Add a print button for the map div
+  const printBtn = document.createElement('button');
+  printBtn.innerHTML = '<i class="fa fa-print"></i>';
+  printBtn.style.position = 'absolute';
+  printBtn.style.top = '130px';
+  printBtn.style.right = '10px';
+  printBtn.style.zIndex = 999;
+  printBtn.style.background = '#fff';
+  printBtn.style.border = '1px solid #ccc';
+  printBtn.style.padding = '4px 9px';
+  printBtn.style.borderRadius = '6px';
+  printBtn.style.cursor = 'pointer';
+  printBtn.style.fontSize = '28px';
+  printBtn.style.color = '#817b7b';
+  printBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+  printBtn.onclick = function() {
+    // Elements to show/hide
+    const mapDiv = document.getElementById('map');
+    const legendDrawer = document.getElementById('legend-drawer');
+    const legendBtn = document.getElementById('legend-drawer-btn');
+    const compass = document.getElementById('compass');
+    const exportBtn = document.getElementById('export-btn');
+    const measureInfo = document.getElementById('measure-info');
+    // Save original styles
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalMapStyle = mapDiv.style.cssText;
+    const originalLegendDrawerStyle = legendDrawer ? legendDrawer.style.cssText : '';
+    const originalLegendBtnStyle = legendBtn ? legendBtn.style.cssText : '';
+    const originalCompassStyle = compass ? compass.style.cssText : '';
+    const originalExportBtnStyle = exportBtn ? exportBtn.style.cssText : '';
+    const originalMeasureInfoStyle = measureInfo ? measureInfo.style.cssText : '';
+
+    // Make map and overlays full screen
+    document.body.style.overflow = 'hidden';
+    mapDiv.style.position = 'fixed';
+    mapDiv.style.top = '0';
+    mapDiv.style.left = '0';
+    mapDiv.style.width = '100vw';
+    mapDiv.style.height = '100vh';
+    mapDiv.style.zIndex = '3000';
+    if (legendDrawer) {
+      legendDrawer.style.position = 'fixed';
+      legendDrawer.style.left = '10px';
+      legendDrawer.style.top = 'auto';
+      legendDrawer.style.bottom = '10px';
+      legendDrawer.style.zIndex = '3001';
+      legendDrawer.style.background = '#fff';
+      legendDrawer.style.display = '';
+    }
+    if (legendBtn) {
+      legendBtn.style.display = 'none';
+    }
+    if (compass) {
+      compass.style.display = '';
+      compass.style.position = 'fixed';
+      compass.style.top = '10px';
+      compass.style.right = '10px';
+      compass.style.left = 'auto';
+      compass.style.bottom = 'auto';
+      compass.style.zIndex = '3002';
+      compass.style.background = 'none';
+    }
+    if (exportBtn) {
+      exportBtn.style.display = 'none';
+    }
+    if (measureInfo) {
+      measureInfo.style.position = 'fixed';
+      measureInfo.style.bottom = '10px';
+      measureInfo.style.left = '10px';
+      measureInfo.style.zIndex = '3003';
+    }
+
+    // Hide print button itself
+    printBtn.style.display = 'none';
+
+    // Print, then restore
+    window.print();
+
+    setTimeout(() => {
+      document.body.style.overflow = originalBodyOverflow;
+      mapDiv.style.cssText = originalMapStyle;
+      if (legendDrawer) legendDrawer.style.cssText = originalLegendDrawerStyle;
+      if (legendBtn) legendBtn.style.cssText = originalLegendBtnStyle;
+      if (compass) compass.style.cssText = originalCompassStyle;
+      if (exportBtn) exportBtn.style.cssText = originalExportBtnStyle;
+      if (measureInfo) measureInfo.style.cssText = originalMeasureInfoStyle;
+      printBtn.style.display = '';
+    }, 1000);
+  };
+
+// Add a floating 'Show Legend' button if legend is hidden
+const showLegendBtn = document.createElement('button');
+showLegendBtn.textContent = 'Show Legend';
+showLegendBtn.style.position = 'fixed';
+showLegendBtn.style.bottom = '20px';
+showLegendBtn.style.left = '20px';
+showLegendBtn.style.zIndex = 4000;
+showLegendBtn.style.background = '#fff';
+showLegendBtn.style.border = '1px solid #ccc';
+showLegendBtn.style.padding = '6px 14px';
+showLegendBtn.style.borderRadius = '6px';
+showLegendBtn.style.cursor = 'pointer';
+showLegendBtn.style.fontSize = '16px';
+showLegendBtn.style.display = 'none';
+document.body.appendChild(showLegendBtn);
+
+showLegendBtn.onclick = function() {
+  const legend = document.getElementById('legend');
+  if (legend) legend.style.display = '';
+  showLegendBtn.style.display = 'none';
+};
+
+// Monitor legend visibility and show the button if hidden
+setInterval(function() {
+  const legend = document.getElementById('legend');
+  if (legend && legend.style.display === 'none') {
+    showLegendBtn.style.display = '';
+  } else {
+    showLegendBtn.style.display = 'none';
+  }
+}, 500);
+
+  printBtn.onmouseover = function() {
+    printBtn.style.background = '#007279';
+    printBtn.style.color = '#fff';
+  };
+  printBtn.onmouseout = function() {
+    printBtn.style.background = '#fff';
+    printBtn.style.color = '#817b7b';
+  };
+  document.body.appendChild(printBtn);
+
+  // Legend Drawer Logic
+  (function() {
+    const drawer = document.getElementById('legend-drawer');
+    const btn = document.getElementById('legend-drawer-btn');
+    const btnIcon = document.getElementById('legend-drawer-btn-icon');
+    const closeBtn = document.getElementById('legend-close-btn');
+    const header = document.getElementById('legend-header');
+    let isOpen = false;
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let startLeft = 0;
+    let startBottom = 0;
+
+    // Open/close animation
+    function openDrawer() {
+      drawer.style.left = '10px';
+      isOpen = true;
+      btnIcon.textContent = '◀';
+    }
+    function closeDrawer() {
+      drawer.style.left = '-400px';
+      isOpen = false;
+      btnIcon.textContent = '▶';
+    }
+    btn.addEventListener('click', function() {
+      if (isOpen) closeDrawer();
+      else openDrawer();
+    });
+    closeBtn.addEventListener('click', closeDrawer);
+
+    // Drag logic (only for the drawer, not the button)
+    header.addEventListener('mousedown', function(e) {
+      if (e.target === closeBtn) return; // Don't drag if clicking close
+      isDragging = true;
+      const rect = drawer.getBoundingClientRect();
+      dragOffsetX = e.clientX - rect.left;
+      dragOffsetY = e.clientY - rect.top;
+      startLeft = rect.left;
+      startBottom = window.innerHeight - rect.bottom;
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      let newLeft = e.clientX - dragOffsetX;
+      let newBottom = window.innerHeight - (e.clientY - dragOffsetY + drawer.offsetHeight);
+      // Clamp to viewport
+      newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - drawer.offsetWidth));
+      newBottom = Math.max(0, Math.min(newBottom, window.innerHeight - 30));
+      drawer.style.left = newLeft + 'px';
+      drawer.style.bottom = newBottom + 'px';
+    });
+    document.addEventListener('mouseup', function() {
+      isDragging = false;
+      document.body.style.userSelect = '';
+    });
+
+    // Ensure the button stays fixed (remove any code that moves it)
+    // (No code needed here, just don't move the button in drag logic)
+  })();
+
+  // Ensure legend is visible on initial load
+  window.addEventListener('DOMContentLoaded', function() {
+    var legend = document.getElementById('legend');
+    if (legend) legend.style.display = '';
+  });
+
+  // Ensure legend drawer is open on initial load
+  window.addEventListener('DOMContentLoaded', function() {
+    var drawer = document.getElementById('legend-drawer');
+    var btnIcon = document.getElementById('legend-drawer-btn-icon');
+    if (drawer) {
+      drawer.style.left = '10px';
+      if (btnIcon) btnIcon.textContent = '◀';
+    }
+  });
+</script>
+
+<script src="https://unpkg.com/leaflet-geometryutil@0.10.0/src/leaflet.geometryutil.js"></script>
+{% endblock %}

@@ -1,0 +1,493 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Map Layer View {% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="{% static 'css/leaflet.measure.css' %}" />
+<link rel="stylesheet" href="path/to/Leaflet.GlobeMini.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="{% static 'js/leaflet.measure.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<!-- <script src="path/to/Leaflet.GlobeMini.js"></script> -->
+<script src="https://unpkg.com/shpjs/dist/shp.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+<script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-geometryutil/v0.8.0/leaflet.geometryutil.js"></script>
+<script src="ttp://demos.vnode.digital/path/to/Leaflet.GlobeMini.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/shp-write@1.2.0/dist/shp-write.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/tokml.js"></script>
+
+
+
+{% endblock %}
+
+{% block body %}
+
+
+<div class="row">
+    <div class=" col-lg-2 col-md-12 col-sm-12 left-container">
+        <div id="top-buttons">
+            <!-- Button to export GeoJSON -->
+            <!-- Button to trigger dropdown menu -->
+            <div class="dropdown" style="z-index: 99;">
+                <span>Map File Export :</span>
+              <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Export
+              </button>
+              <ul class="dropdown-menu" >
+                <button class="dropdown-item" onclick="exportGeoJSON()">Export GeoJSON</button>
+                <button class="dropdown-item" onclick="exportShapefile()">Export Shapefile</button>
+              </ul>
+            </div>
+            <hr>
+            
+           <h6>Drop or import file</h6>
+            <div style="display: flex;">
+                <input type="file" id="fileInput" accept=".zip, .geojson, .csv, .kml" multiple onchange="handleFileSelect(event)" />
+            </div>
+        </div>
+        <hr>
+        <h6>Map Layers:</h6>
+        <div id="layerToggle"></div>
+    </div>
+    <div class="col-lg-10 col-md-12 col-sm-12 ">
+        <div id="map"></div>
+    </div>
+</div>
+
+
+
+<script>
+    // var map = L.map('map').setView([23.685, 90.3563], 7);
+    
+    // var openStreetMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    // }).addTo(map);
+
+    // var imageryLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    //     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    // });
+ 
+    // var baseLayers = {
+    //     "OpenStreetMap": openStreetMapLayer,
+    //     "Imagery": imageryLayer
+    // };
+
+    // L.control.layers(baseLayers).addTo(map);
+
+
+// Initialize the map
+var map = L.map('map').setView([23.999941, 90.420273], 12);
+
+// Define the OpenStreetMap layer
+var openStreetMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Powered by: <a href="https://www.vnode.digital">vNode Digital'
+}).addTo(map);
+
+// Define the Esri Imagery layer
+var imageryLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    attribution: 'Powered by: <a href="https://www.vnode.digital">vNode Digital'
+});
+
+// Define the Esri Labels layer
+var labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    attribution: ''
+});
+
+// Composite layer for Imagery + Labels
+var imageryWithLabels = L.layerGroup([imageryLayer, labelsLayer]);
+
+// Define the base layers
+var baseLayers = {
+    "OpenStreetMap": openStreetMapLayer,
+    "Imagery with Labels": imageryWithLabels
+};
+
+// Add the layer control to the map
+L.control.layers(baseLayers).addTo(map);
+
+// Ensure the default layer is set
+imageryWithLabels.addTo(map);
+
+    L.Measure = {
+        linearMeasurement: "Distance measurement",
+        areaMeasurement: "Area measurement",
+        start: "Start",
+        meter: "m",
+        kilometer: "km",
+        squareMeter: "m²",
+        squareKilometers: "km²",
+    };
+
+    var measure = L.control.measure({}).addTo(map);
+
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    var drawControl = new L.Control.Draw({
+        edit: {
+            featureGroup: drawnItems
+        }
+    });
+    map.addControl(drawControl);
+
+    map.on('draw:created', function(event) {
+        var layer = event.layer;
+        drawnItems.addLayer(layer);
+    });
+
+    
+    
+
+    //Export file
+// Function to toggle display of export options dropdown
+function toggleExportOptions() {
+  var dropdown = document.getElementById("exportOptions");
+  if (dropdown.style.display === "none") {
+    dropdown.style.display = "block";
+  } else {
+    dropdown.style.display = "none";
+  }
+}
+
+// Function to export GeoJSON format
+function exportGeoJSON() {
+  var data = drawnItems.toGeoJSON();
+  var jsonData = JSON.stringify(data);
+
+  var blob = new Blob([jsonData], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "map_data.geojson";
+  document.body.appendChild(a);
+  a.click();
+
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+
+
+//..................................................................
+//Shape file export
+
+function exportShapefile() {
+    try {
+        // Get GeoJSON data from drawn items
+        var geojson = drawnItems.toGeoJSON();
+
+        // Check if shpwrite object is available
+        if (typeof shpwrite !== 'undefined') {
+            // Convert GeoJSON to Shapefile
+            shpwrite.download(geojson);
+        } else {
+            console.error("shpwrite object is not defined.");
+            alert("Error exporting Shapefile. shpwrite object is not defined.");
+        }
+    } catch (error) {
+        console.error("Error exporting Shapefile:", error);
+        alert("Error exporting Shapefile. Please try again or check the console for more details: " + error.message);
+    }
+}
+
+
+function exportShapefile() {
+    console.log("Export button clicked");
+    // Rest of the function code...
+}
+  
+//.........................................................................................
+//input file loading
+var loadedLayers = [];
+function handleFileSelect(event) {
+    var files = event.target.files;
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (file.name.endsWith('.geojson')) {
+            var reader = new FileReader();
+            reader.onload = (function(file) {
+                return function(event) {
+                    loadGeoJSON(event.target.result, file.name);
+                };
+            })(file);
+            reader.readAsText(file);
+        } else if (file.name.endsWith('.zip')) {
+            var reader = new FileReader();
+            reader.onload = (function(file) {
+                return function(event) {
+                    loadShapefile(event.target.result, file.name);
+                };
+            })(file);
+            reader.readAsArrayBuffer(file);
+        } else if (file.name.endsWith('.csv')) {
+            var reader = new FileReader();
+            reader.onload = (function(file) {
+                return function(event) {
+                    loadCSVfile(event.target.result, file.name);
+                };
+            })(file);
+            reader.readAsText(file);
+        } else if (file.name.endsWith('.kml')) {
+            var reader = new FileReader();
+            reader.onload = (function(file) {
+                return function(event) {
+                    loadKMLfile(event.target.result, file.name);
+                };
+            })(file);
+            reader.readAsText(file);
+        } else {
+            alert("Unsupported file format: " + file.name);
+        }
+    }
+}
+
+
+
+function loadGeoJSON(geojsonContent, fileName) {
+    try {
+        var geojson = JSON.parse(geojsonContent);
+        var layer = L.geoJSON(geojson);
+        layer.addTo(map);
+        map.fitBounds(layer.getBounds());
+        loadedLayers.push({ name: fileName, layer: layer }); // Add loaded layer to array
+        updateLayerToggle(); // Update layer toggle checkboxes
+    } catch (error) {
+        console.error("Error loading GeoJSON:", error);
+        alert("Error loading GeoJSON. Please make sure the file is valid.");
+    }
+}
+
+function loadShapefile(fileContent, fileName) {
+    // Parse the Shapefile using shpjs and load it onto the map
+    shp(fileContent).then(function(geojson) {
+        var layer = L.geoJSON(geojson);
+        layer.addTo(map);
+        map.fitBounds(layer.getBounds());
+        loadedLayers.push({ name: fileName, layer: layer }); // Add loaded layer to array
+        updateLayerToggle(); // Update layer toggle checkboxes
+    }).catch(function(error) {
+        console.error("Error loading Shapefile:", error);
+        alert("Error loading Shapefile. Please make sure the files are valid.");
+    });
+}
+
+
+// Load KML file
+function loadKMLfile(kmlContent, fileName) {
+    try {
+        var parser = new DOMParser();
+        var kmlDoc = parser.parseFromString(kmlContent, "application/xml");
+        var allCoordinates = [];
+        var layerGroup = L.layerGroup(); // Use layer group to combine all elements
+
+        var placemarks = kmlDoc.getElementsByTagName("Placemark");
+        if (placemarks.length > 0) {
+            for (var i = 0; i < placemarks.length; i++) {
+                var placemark = placemarks[i];
+                var points = placemark.getElementsByTagName("Point");
+                var lineStrings = placemark.getElementsByTagName("LineString");
+                var polygons = placemark.getElementsByTagName("Polygon");
+
+                var processCoordinates = function(coordinates) {
+                    var coordinatesArray = coordinates.split(/\s+/).map(coord => coord.split(',').map(parseFloat));
+                    allCoordinates.push(...coordinatesArray);
+                    var latLngArray = coordinatesArray.map(coord => [coord[1], coord[0]]);
+                    return latLngArray;
+                };
+
+                for (var j = 0; j < points.length; j++) {
+                    var point = points[j];
+                    var coordinates = point.getElementsByTagName("coordinates")[0].textContent.trim();
+                    var latLngArray = processCoordinates(coordinates);
+                    var marker = L.marker(latLngArray[0]).addTo(layerGroup); // Create a marker for the point
+                }
+
+                for (var j = 0; j < lineStrings.length; j++) {
+                    var lineString = lineStrings[j];
+                    var coordinates = lineString.getElementsByTagName("coordinates")[0].textContent.trim();
+                    var latLngArray = processCoordinates(coordinates);
+                    var polyline = L.polyline(latLngArray, { color: 'blue' });
+                    polyline.addTo(layerGroup);
+                }
+
+                for (var k = 0; k < polygons.length; k++) {
+                    var polygon = polygons[k];
+                    var outerBoundary = polygon.getElementsByTagName("outerBoundaryIs")[0];
+                    var linearRing = outerBoundary.getElementsByTagName("LinearRing")[0];
+                    var coordinates = linearRing.getElementsByTagName("coordinates")[0].textContent.trim();
+                    var latLngArray = processCoordinates(coordinates);
+                    var polygonLayer = L.polygon(latLngArray, { color: 'blue' });
+                    polygonLayer.addTo(layerGroup);
+                }
+            }
+
+            layerGroup.addTo(map);
+
+            if (allCoordinates.length > 0) {
+                var bounds = L.latLngBounds(allCoordinates.map(coord => [coord[1], coord[0]]));
+                map.fitBounds(bounds);
+            }
+
+            loadedLayers.push({ name: fileName, layer: layerGroup });
+            updateLayerToggle();
+        } else {
+            alert("No Placemarks found in the KML file.");
+        }
+    } catch (error) {
+        console.error("Error loading KML:", error);
+        alert("Error loading KML. Please make sure the file is valid.");
+    }
+}
+
+
+
+
+
+
+// Load CSV file
+function loadCSVfile(csvContent, fileName) {
+    try {
+        var rows = csvContent.trim().split('\n');
+        var headers = rows[0].split(',');
+        var allCoordinates = [];
+        var layerGroup = L.layerGroup(); // Use layer group to combine all elements
+
+        // Support for different header names
+        var latIndex = headers.indexOf("lat");
+        if (latIndex === -1) latIndex = headers.indexOf("latitude");
+
+        var lonIndex = headers.indexOf("lng");
+        if (lonIndex === -1) lonIndex = headers.indexOf("longitude");
+        if (lonIndex === -1) lonIndex = headers.indexOf("lon");
+
+        var polygonIndex = headers.indexOf("Polygon");
+
+        if ((latIndex === -1 || lonIndex === -1) && polygonIndex === -1) {
+            console.error("Latitude/longitude or Polygon header not found in CSV.");
+            alert("Latitude/longitude or Polygon header not found in CSV. Please make sure the file is valid.");
+            return;
+        }
+
+        for (var i = 1; i < rows.length; i++) {
+            var values = rows[i].split(',');
+
+            if (polygonIndex !== -1 && values[polygonIndex].trim().length > 0) {
+                // Process polygon data
+                var polygonCoordinates = JSON.parse(values[polygonIndex].trim());
+                var latLngArray = polygonCoordinates.map(coord => [coord[1], coord[0]]);
+                var polygonLayer = L.polygon(latLngArray, { color: 'blue' }).addTo(layerGroup);
+                allCoordinates.push(...latLngArray);
+            } else if (latIndex !== -1 && lonIndex !== -1) {
+                // Process point data
+                var latitude = parseFloat(values[latIndex]);
+                var longitude = parseFloat(values[lonIndex]);
+
+                if (isNaN(latitude) || isNaN(longitude)) {
+                    console.error("Invalid latitude or longitude value:", latitude, longitude);
+                    continue;
+                }
+
+                var latLng = [latitude, longitude];
+                allCoordinates.push(latLng);
+                var marker = L.marker(latLng).addTo(layerGroup);
+
+                var properties = {};
+                for (var j = 0; j < headers.length; j++) {
+                    properties[headers[j]] = values[j];
+                }
+
+                var popupContent = "<strong>Details:</strong><br/>";
+                popupContent += "<table>";
+                for (var key in properties) {
+                    if (key !== "lat" && key !== "lng" && key !== "latitude" && key !== "longitude" && key !== "lon" && key !== "Polygon" && properties[key]) {
+                        popupContent += "<tr><td><strong>" + key + ":</strong></td><td>" + properties[key] + "</td></tr>";
+                    }
+                }
+                popupContent += "</table>";
+                marker.bindPopup(popupContent);
+            }
+        }
+
+        layerGroup.addTo(map);
+
+        if (allCoordinates.length > 0) {
+            var bounds = L.latLngBounds(allCoordinates);
+            map.fitBounds(bounds);
+        }
+
+        loadedLayers.push({ name: fileName, layer: layerGroup });
+        updateLayerToggle();
+    } catch (error) {
+        console.error("Error loading CSV:", error);
+        alert("Error loading CSV. Please make sure the file is valid.");
+    }
+}
+
+
+
+
+// .............................
+
+function updateLayerToggle() {
+    var layerToggleDiv = document.getElementById("layerToggle");
+    layerToggleDiv.innerHTML = ""; // Clear existing checkboxes
+    loadedLayers.forEach(function(loadedLayer) {
+        var checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = true; // Default to visible
+        checkbox.style.marginRight = "5px"; // Add padding to the right
+        checkbox.onchange = function() {
+            if (this.checked) {
+                map.addLayer(loadedLayer.layer);
+            } else {
+                map.removeLayer(loadedLayer.layer);
+            }
+        };
+        var label = document.createElement("label");
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(getFileName(loadedLayer.name))); // Get file name
+        
+        var container = document.createElement("div"); // Create a container for each checkbox and label
+        container.appendChild(label);
+        
+        layerToggleDiv.appendChild(container); // Append the container
+        layerToggleDiv.appendChild(document.createElement("br"));
+    });
+}
+
+// Function to extract file name from path, remove file extension, remove underscores, and add spaces
+function getFileName(path) {
+    var fileNameWithExtension = path.split("/").pop(); // Assuming path uses forward slash as separator
+    var fileNameWithoutExtension = fileNameWithExtension.split(".")[0]; // Remove file extension
+    var fileNameWithSpaces = fileNameWithoutExtension.replace(/_/g, " "); // Remove underscores and add spaces
+    return fileNameWithSpaces;
+}
+
+</script>
+
+<style>
+    .dropdown-item:focus, .dropdown-item:hover {
+    color: #1e2125;
+    background-color: #055160;
+    color: white;
+}
+
+.dropdown-toggle {
+    color: white;
+    background-color: #007279;
+}
+
+#fileInput {
+    padding: 75px 20px 20px 20px;
+    border: 1px dotted grey;
+    background-image: url('https://demos.vnode.digital/media/import-file.png'); 
+    background-repeat: no-repeat; 
+    background-position: center top; 
+    background-size: 150px 60px;
+}
+
+</style>
+{% endblock %}

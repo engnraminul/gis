@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Map Layer View {% endblock %}
+
+{% block head %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet-src.js" crossorigin=""></script>
+<script src="{% static 'layer/Elevated_express.js' %}"></script>
+<script src="{% static 'layer/MRT_Line_6.js' %}"></script>
+<script src="{% static 'layer/BRT_line_3.js' %}"></script>
+
+<link rel="stylesheet" href="{% static 'css/leaflet.measure.css' %}" />
+<script src="{% static 'js/leaflet.measure.js' %}"></script>
+
+<script src="https://unpkg.com/leaflet-fullscreen/dist/Leaflet.fullscreen.min.js"></script>
+
+<style type="text/css">
+  #map {
+    height: 820px;
+  }
+</style>
+
+{% endblock %}
+
+{% block body %}
+<div id="map"></div>
+
+
+
+<script>
+  var map = L.map('map').setView([23.685, 90.3563], 7);
+  
+  // Define base layers
+  var baseLayers = {
+    "Base Map": L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+    }),
+    "Satellite Map": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    })
+  };
+
+  // Define overlay layers
+  var overlayLayers = {
+    "MRT Line 6 Layer": L.geoJSON(mrt_line_6).addTo(map),
+    "Elevated Express": L.geoJSON(elevated_express).addTo(map),
+    "BRT Line 3": L.geoJSON(brt_line3).addTo(map),
+  };
+
+  // Add base layers to the map
+  L.control.layers(baseLayers, overlayLayers).addTo(map);
+
+  // Add the default base layer to the map
+  baseLayers["Base Map"].addTo(map);
+
+  // Add measurement control to the map
+
+  L.Measure = {
+    linearMeasurement: "Distance measurement",
+    areaMeasurement: "Area measurement",
+    start: "Start",
+    meter: "m",
+    kilometer: "km",
+    squareMeter: "m²",
+    squareKilometers: "km²",
+    };
+
+    var measure = L.control.measure({}).addTo(map);
+    map.addControl(new L.Control.Fullscreen({
+      title: {
+        'false': 'View Fullscreen',
+        'true': 'Exit Fullscreen'
+      }
+    }));
+</script>
+{% endblock %}

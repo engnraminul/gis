@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} User Registration {% endblock %}
+
+{% block head %}
+
+<title>User Registration</title>
+
+{% endblock %}
+
+{% block body %}
+<style>
+    
+</style>
+<div class="container1">
+    <div class="registration-form">
+        <h2 class="text-center regis-title">Registration</h2>
+        <form method="post">
+                        {% csrf_token %}
+
+                        {% if messages %}
+                            <div class="alert alert-danger">
+                                <ul>
+                                    {% for message in messages %}
+                                        <li>{{ message }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+
+
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" name="username" class="form-control" id="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" name="email" class="form-control" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password1">Password</label>
+                            <input type="password" name="password1" class="form-control" id="password1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password2">Confirm Password</label>
+                            <input type="password" name="password2" class="form-control" id="password2" required>
+                        </div>
+                        <button type="submit" class="btn regis-button">Register</button>
+                    </form>
+                    <p style="text-align: center;"><span style="color:#dc3545"> You have account! </span> Please <a href="{% url 'Login:user_login' %}">Login</a></p>
+    </div>
+</div>
+
+<style>
+    .regis-button {
+        background-color: #007279;
+        color: aliceblue;
+        border: 1px solid #007279;
+    }
+
+    .regis-button:hover {
+        border: 1px solid #007279;
+        color: #007279;
+    }
+
+    .regis-title {
+        color: #dc3545;
+    }
+    a {
+       color: #007279; 
+    }
+</style>
+
+
+{% endblock %}

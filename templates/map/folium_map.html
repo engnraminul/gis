@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Update Map {% endblock %}
+
+{% block head %}
+<title>Update Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css" />
+{% endblock %}
+
+{% block body %}
+
+<style>
+    
+    .leaflet-popup.foliumpopup.leaflet-zoom-animated {
+    height: 400px!important;
+    overflow: auto!important;
+}
+.leaflet-popup-content {
+    margin: 13px 24px 13px 20px;
+    line-height: 1.3;
+    font-size: 13px;
+    font-size: 1.08333em;
+    min-height: 1px;
+    height: 500px;
+    overflow-x: scroll;
+}
+    #map {
+        position: relative !important;
+        width: 100%;
+        height: 0;
+        padding-bottom: 0px !important;
+        height: 800px !important;
+    }
+
+    .folium-map {
+        padding-bottom: 0px !important; /* Remove the default padding */
+        height: 800px;
+    }
+
+    @media (min-width: 1200px) {
+        #map {
+            padding-bottom: 56px !important; /* Remove the default padding */
+            height: 800px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        #map {
+            height: 400px; /* Adjust height for smaller screens */
+        }
+    }
+
+    #map > div {
+        height: 800px !important;
+    }
+
+    .custom-popup {
+        background: white;
+        color: #333;
+        box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+        width: 400px !important;
+        height: 453px !important;
+        overflow-y: scroll;
+    }
+
+    /* Loader Styles */
+    .loader {
+        border: 16px solid #f3f3f3; /* Light grey */
+        border-top: 16px solid #007279; /* Blue */
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 2s linear infinite;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin: -30px 0 0 -30px; /* Center the spinner */
+        z-index: 9999; /* Ensure it's on top */
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Loader container */
+    .loader-container {
+        position: relative;
+        height: 800px; /* Match the height of the map */
+    }
+
+    .compass img {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+}
+    
+</style>
+
+<!-- Loader Container -->
+<div class="loader-container">
+    <div class="loader"></div>
+    <div id="map" style="display: none;">
+        {{ map_html|safe }}
+    </div>
+    <div class="compass">
+        <img src="https://gis.vnode.digital/media/icon/Compass-icons.png" width="100" height="100">
+    </div>
+    
+</div>
+
+<script>
+    // Wait for the DOM to fully load
+    document.addEventListener('DOMContentLoaded', function () {
+        const mapDiv = document.querySelector('#map > div > div');
+        if (mapDiv) {
+            mapDiv.style.height = '100%'; // Set height to 100%
+            mapDiv.style.paddingBottom = '0'; // Remove padding
+        }
+    });
+
+    // Hide loader and show map when the map is ready
+    window.onload = function() {
+        document.querySelector(".loader").style.display = "none"; // Hide loader
+        document.getElementById("map").style.display = "block"; // Show map
+    };  
+</script>
+
+
+
+{% endblock %}

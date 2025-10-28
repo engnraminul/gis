@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} User Login {% endblock %}
+
+{% block head %}
+
+<title>Edit Profile</title>
+
+{% endblock %}
+
+{% block body %}
+<div class="edit-profile border p-5">
+    <div class="bg-light text-center">
+        <h2>Edit Profile</h2>
+    </div>    
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_full_name">Full Name</label>
+                <input type="text" name="full_name" id="id_full_name" class="form-control" value="{{ form.full_name.value }}">
+            </div>
+            <div class="form-group">
+                <label for="id_phone">Phone</label>
+                <input type="text" name="phone" id="id_phone" class="form-control" value="{{ form.phone.value }}">
+            </div>
+            <div class="form-group">
+                <label for="id_email">Email</label>
+                <input type="email" name="email" id="id_email" class="form-control" value="{{ form.email.value }}">
+            </div>
+            <div class="form-group">
+                <label for="id_address">Address</label>
+                <textarea name="address" id="id_address" class="form-control">{{ form.address.value }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="id_profile_picture">Profile Picture</label>
+                    <div>
+                        {% if form.instance.profile_picture %}
+                            <img id="profile-preview" style="width: 200px; height: 200px;" src="{{ form.instance.profile_picture.url }}" alt="Profile Picture" class="img-fluid mb-2">
+                        {% endif %}
+                    </div>
+                    <input type="file" name="profile_picture" id="id_profile_picture" class="form-control-file" onchange="previewProfilePicture(event)">
+            </div>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a class="btn btn-danger" href="javascript:history.back()">Cancel</a>
+        </form>
+        <script>
+            function previewProfilePicture(event) {
+    const output = document.getElementById('profile-preview');
+    output.src = URL.createObjectURL(event.target.files[0]);
+    output.onload = () => URL.revokeObjectURL(output.src);  // Free memory
+}
+        </script>
+        <style>
+            .edit-profile {
+    width: 50%;
+    margin-left: 25%;
+    margin-right: 25%;
+    margin-top: 5%;
+    margin-bottom: 10%;
+}
+
+        </style>
+    </div>
+
+
+
+{% endblock %}

@@ -1,0 +1,644 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Map Layer View {% endblock %}
+
+{% block head %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload and Render Shapefile</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="{% static 'css/toggle-sidebar.css' %}" rel="stylesheet">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/shpjs/dist/shp.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    {% endblock %}
+
+    {% block body %}
+    <div class="wrapper">
+        <aside id="sidebar">
+            <div class="d-flex">
+                <button class="toggle-btn" type="button">
+                    <i class="lni lni-grid-alt"></i>
+                </button>
+                <div class="sidebar-logo">
+                    <a href="#">Map Layer</a>
+                </div>
+            </div>
+            <ul class="sidebar-nav">
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link">
+                        <span><div id="layerToggle"></div></span>
+                    </a>
+                </li>
+            </ul>
+            
+        </aside>
+        <div class="main">
+                <div id="map"></div>
+        </div>
+        <aside id="sidebar2">
+            <div class="d-flex">
+                <button class="toggle-btn2" type="button">
+                    <i class="lni lni-grid-alt"></i>
+                </button>
+                <div class="sidebar2-logo">
+                    <a href="#">Map Attributes</a>
+                </div>
+            </div>
+            <ul class="sidebar-nav">
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar2-link">
+                        <span>
+                            <select id="shapefileSelect" onchange="updateAttributeTable()"></select>
+                            
+                            <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#attributeModal">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                            <div id="attributeTableContainer"></div>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    
+        <!-- Modal -->
+        <div class="modal fade" id="attributeModal" tabindex="-1" aria-labelledby="attributeModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="attributeModalLabel">Attributes Table</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="modalAttributeTableContainer"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+  
+  <style>
+    #fullscreenButton {
+        margin: 10px;
+        padding: 5px 10px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 3px;
+    }
+
+    #fullscreenButton:hover {
+        background-color: #0056b3;
+    }
+
+    #attributeTableContainer:fullscreen {
+        width: 100%;
+        height: 100%;
+        background-color: white; /* Optional: Add a background color */
+        overflow: auto; /* Ensure the content is scrollable */
+    }
+    </style>
+</div>
+
+<script>
+    var map = L.map('map').setView([23.999941, 90.420273], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var loadedLayers = []; // Array to store loaded layers
+
+    // Initialize the map
+
+function loadGeoJSON(geojsonContent, fileName) {
+    try {
+        var geojson = JSON.parse(geojsonContent);
+        var layer = L.geoJSON(geojson);
+        layer.addTo(map);
+        map.fitBounds(layer.getBounds());
+        loadedLayers.push({ name: fileName, layer: layer }); // Add loaded layer to array
+        updateLayerToggle(); // Update layer toggle checkboxes
+    } catch (error) {
+        console.error("Error loading GeoJSON:", error);
+        alert("Error loading GeoJSON. Please make sure the file is valid.");
+    }
+}
+
+function loadShapefile(fileContent, fileName) {
+    // Parse the Shapefile using shpjs and load it onto the map
+    shp(fileContent).then(function(geojson) {
+        var layer = L.geoJSON(geojson);
+        layer.addTo(map);
+        map.fitBounds(layer.getBounds());
+        loadedLayers.push({ name: fileName, layer: layer }); // Add loaded layer to array
+        updateLayerToggle(); // Update layer toggle checkboxes
+    }).catch(function(error) {
+        console.error("Error loading Shapefile:", error);
+        alert("Error loading Shapefile. Please make sure the files are valid.");
+    });
+}
+
+
+// Load KML file
+function loadKMLfile(kmlContent, fileName) {
+    try {
+        var parser = new DOMParser();
+        var kmlDoc = parser.parseFromString(kmlContent, "application/xml");
+        var allCoordinates = [];
+        var layerGroup = L.layerGroup(); // Use layer group to combine all elements
+
+        var placemarks = kmlDoc.getElementsByTagName("Placemark");
+        if (placemarks.length > 0) {
+            for (var i = 0; i < placemarks.length; i++) {
+                var placemark = placemarks[i];
+                var points = placemark.getElementsByTagName("Point");
+                var lineStrings = placemark.getElementsByTagName("LineString");
+                var polygons = placemark.getElementsByTagName("Polygon");
+
+                var processCoordinates = function(coordinates) {
+                    var coordinatesArray = coordinates.split(/\s+/).map(coord => coord.split(',').map(parseFloat));
+                    allCoordinates.push(...coordinatesArray);
+                    var latLngArray = coordinatesArray.map(coord => [coord[1], coord[0]]);
+                    return latLngArray;
+                };
+
+                for (var j = 0; j < points.length; j++) {
+                    var point = points[j];
+                    var coordinates = point.getElementsByTagName("coordinates")[0].textContent.trim();
+                    var latLngArray = processCoordinates(coordinates);
+                    var marker = L.marker(latLngArray[0]).addTo(layerGroup); // Create a marker for the point
+                }
+
+                for (var j = 0; j < lineStrings.length; j++) {
+                    var lineString = lineStrings[j];
+                    var coordinates = lineString.getElementsByTagName("coordinates")[0].textContent.trim();
+                    var latLngArray = processCoordinates(coordinates);
+                    var polyline = L.polyline(latLngArray, { color: 'blue' });
+                    polyline.addTo(layerGroup);
+                }
+
+                for (var k = 0; k < polygons.length; k++) {
+                    var polygon = polygons[k];
+                    var outerBoundary = polygon.getElementsByTagName("outerBoundaryIs")[0];
+                    var linearRing = outerBoundary.getElementsByTagName("LinearRing")[0];
+                    var coordinates = linearRing.getElementsByTagName("coordinates")[0].textContent.trim();
+                    var latLngArray = processCoordinates(coordinates);
+                    var polygonLayer = L.polygon(latLngArray, { color: 'blue' });
+                    polygonLayer.addTo(layerGroup);
+                }
+            }
+
+            layerGroup.addTo(map);
+
+            if (allCoordinates.length > 0) {
+                var bounds = L.latLngBounds(allCoordinates.map(coord => [coord[1], coord[0]]));
+                map.fitBounds(bounds);
+            }
+
+            loadedLayers.push({ name: fileName, layer: layerGroup });
+            updateLayerToggle();
+        } else {
+            alert("No Placemarks found in the KML file.");
+        }
+    } catch (error) {
+        console.error("Error loading KML:", error);
+        alert("Error loading KML. Please make sure the file is valid.");
+    }
+}
+
+
+// Load CSV file
+function loadCSVfile(csvContent, fileName) {
+    try {
+        var rows = csvContent.trim().split('\n');
+        var headers = rows[0].split(',');
+        var features = [];
+
+        var latIndex = headers.indexOf("lat");
+        var lonIndex = headers.indexOf("lng");
+
+        if (latIndex === -1 || lonIndex === -1) {
+            console.error("Latitude or longitude header not found in CSV.");
+            alert("Latitude or longitude header not found in CSV. Please make sure the file is valid.");
+            return;
+        }
+
+        for (var i = 1; i < rows.length; i++) {
+            var values = rows[i].split(',');
+            var latitude = parseFloat(values[latIndex]);
+            var longitude = parseFloat(values[lonIndex]);
+
+            if (isNaN(latitude) || isNaN(longitude)) {
+                console.error("Invalid latitude or longitude value:", latitude, longitude);
+                continue;
+            }
+
+            var properties = {};
+            for (var j = 0; j < headers.length; j++) {
+                properties[headers[j]] = values[j];
+            }
+
+            var feature = {
+                type: "Feature",
+                properties: properties,
+                geometry: {
+                    type: "Point",
+                    coordinates: [longitude, latitude]
+                }
+            };
+            features.push(feature);
+        }
+
+        var geojson = {
+            type: "FeatureCollection",
+            features: features
+        };
+
+        var layer = L.geoJSON(geojson, {
+            onEachFeature: function (feature, layer) {
+                var popupContent = "<strong>" + feature.properties.city + "</strong><br/>";
+                popupContent += "Population: " + feature.properties.population + "<br/>";
+                popupContent += "Country: " + feature.properties.country + "<br/>";
+                popupContent += "Admin Name: " + feature.properties.admin_name;
+                layer.bindPopup(popupContent);
+            }
+        }).addTo(map);
+        map.fitBounds(layer.getBounds());
+
+        // Store loaded layer
+        loadedLayers.push({ name: fileName, layer: layer });
+        updateLayerToggle();
+
+    } catch (error) {
+        console.error("Error loading CSV:", error);
+        alert("Error loading CSV. Please make sure the file is valid.");
+    }
+}
+
+
+
+//Load file form database
+    function loadShapefileFromUrl(url) {
+    // Extract file extension from the URL
+    var fileExtension = url.split('.').pop().toLowerCase();
+
+    if (fileExtension === 'geojson') {
+        // If file format is GeoJSON, load using loadGeoJSON function
+        fetch(url)
+            .then(response => response.json()) // Assuming it's a JSON file
+            .then(geojson => {
+                loadGeoJSON(JSON.stringify(geojson), url);
+            })
+            .catch(error => {
+                console.error("Error fetching GeoJSON:", error);
+                alert("Error fetching GeoJSON. Please make sure the URL is correct.");
+            });
+    } else if (fileExtension === 'zip') {
+        // If file format is Shapefile (contained within a zip), fetch and load using loadShapefile function
+        fetch(url)
+            .then(response => response.arrayBuffer())
+            .then(arrayBuffer => {
+                loadShapefile(arrayBuffer, url);
+            })
+            .catch(error => {
+                console.error("Error fetching Shapefile:", error);
+                alert("Error fetching Shapefile. Please make sure the URL is correct.");
+            });
+    } else if (fileExtension === 'csv') {
+        // If file format is CSV, fetch and load using loadCSVfile function
+        fetch(url)
+            .then(response => response.text())
+            .then(csvContent => {
+                loadCSVfile(csvContent, url);
+            })
+            .catch(error => {
+                console.error("Error fetching CSV file:", error);
+                alert("Error fetching CSV file. Please make sure the URL is correct.");
+            });
+    } else if (fileExtension === 'kml') {
+        // If file format is KML, fetch and load using loadKMLfile function
+        fetch(url)
+            .then(response => response.text())
+            .then(kmlContent => {
+                loadKMLfile(kmlContent, url);
+            })
+            .catch(error => {
+                console.error("Error fetching KML file:", error);
+                alert("Error fetching KML file. Please make sure the URL is correct.");
+            });
+    } else {
+        // Unsupported file format
+        console.error("Unsupported file format:", fileExtension);
+        alert("Unsupported file format. Please make sure the file format is either GeoJSON or Shapefile.");
+    }
+}
+
+
+    // Call loadShapefileFromUrl with the URL of the Shapefile
+    {% for url in mapfile %}
+    loadShapefileFromUrl('{{ url }}');
+    {% endfor %}
+
+
+
+
+// .............................
+
+function updateLayerToggle() {
+    var layerToggleDiv = document.getElementById("layerToggle");
+    layerToggleDiv.innerHTML = ""; // Clear existing checkboxes
+    loadedLayers.forEach(function(loadedLayer) {
+        var checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = true; // Default to visible
+        checkbox.style.marginRight = "5px"; // Add padding to the right
+        checkbox.onchange = function() {
+            if (this.checked) {
+                map.addLayer(loadedLayer.layer);
+            } else {
+                map.removeLayer(loadedLayer.layer);
+            }
+        };
+        var label = document.createElement("label");
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(getFileName(loadedLayer.name))); // Get file name
+        
+        var container = document.createElement("div"); // Create a container for each checkbox and label
+        container.appendChild(label);
+        
+        layerToggleDiv.appendChild(container); // Append the container
+        layerToggleDiv.appendChild(document.createElement("br"));
+    });
+}
+
+// Function to extract file name from path, remove file extension, remove underscores, and add spaces
+function getFileName(path) {
+    var fileNameWithExtension = path.split("/").pop(); // Assuming path uses forward slash as separator
+    var fileNameWithoutExtension = fileNameWithExtension.split(".")[0]; // Remove file extension
+    var fileNameWithSpaces = fileNameWithoutExtension.replace(/_/g, " "); // Remove underscores and add spaces
+    return fileNameWithSpaces;
+}
+
+
+
+// right side toggle
+
+function toggleNav() {
+  var sidebar = document.getElementById("mySidebar");
+  var main = document.getElementById("main");
+  var openBtn = document.querySelector(".openbtn");
+  
+  if (sidebar.style.width === "250px") {
+    sidebar.style.width = "0";
+    main.style.marginRight = "0";
+    openBtn.innerHTML = "? Open Sidebar";
+  } else {
+    sidebar.style.width = "250px";
+    main.style.marginRight = "250px";
+    openBtn.innerHTML = "×";
+  }
+}
+
+
+const hamBurger = document.querySelector(".toggle-btn");
+const hamBurger2 = document.querySelector(".toggle-btn2");
+
+// Function to expand the sidebar
+function expandSidebar() {
+  document.querySelector("#sidebar").classList.add("expand");
+}
+
+// Function to expand the second sidebar
+function expandSidebar2() {
+  document.querySelector("#sidebar2").classList.add("expand");
+}
+
+// Initially expand the sidebar and second sidebar
+expandSidebar();
+expandSidebar2();
+
+// Event listeners for toggling the sidebar
+hamBurger.addEventListener("click", function () {
+  document.querySelector("#sidebar").classList.toggle("expand");
+});
+
+hamBurger2.addEventListener("click", function () {
+  document.querySelector("#sidebar2").classList.toggle("expand");
+});
+
+
+// ................................................
+//Attributes table
+
+let highlightedFeatureLayer; // Variable to store the currently highlighted layer
+
+function updateShapefileSelect() {
+    var select = document.getElementById("shapefileSelect");
+    select.innerHTML = "";
+
+    var anyLayerChecked = false;
+
+    loadedLayers.forEach(function(loadedLayer, index) {
+        if (document.getElementById("layerToggleCheckbox" + index).checked) {
+            anyLayerChecked = true;
+            var option = document.createElement("option");
+            option.value = index;
+            option.text = getFileName(loadedLayer.name);
+            select.appendChild(option);
+        }
+    });
+
+    if (anyLayerChecked) {
+        updateAttributeTable(); // Update table for the first shapefile by default
+    } else {
+        clearAttributeTable(); // Clear the attribute table if no layers are checked
+    }
+}
+
+function updateAttributeTable() {
+    var select = document.getElementById("shapefileSelect");
+    if (select.value !== undefined && select.value !== "") {
+        var selectedLayer = loadedLayers[select.value];
+        var features = selectedLayer.layer.toGeoJSON().features; // Extract GeoJSON features from the layer
+        populateAttributeTable(features, selectedLayer.layer);
+    } else {
+        clearAttributeTable(); // Clear the attribute table if no layer is selected
+    }
+}
+
+function populateAttributeTable(features, layer) {
+    var sidebarContainer = document.getElementById("attributeTableContainer");
+    var modalContainer = document.getElementById("modalAttributeTableContainer");
+
+    sidebarContainer.innerHTML = ""; // Clear existing table in sidebar
+    modalContainer.innerHTML = ""; // Clear existing table in modal
+
+    if (features.length === 0) {
+        return;
+    }
+
+    var tableHTML = createTableHTML(features);
+
+    // Populate both containers with the table HTML
+    sidebarContainer.innerHTML = tableHTML;
+    modalContainer.innerHTML = tableHTML;
+
+    // Add click event listeners to table rows
+    addRowClickListeners(features, layer);
+}
+
+function createTableHTML(features) {
+    var table = document.createElement("table");
+    table.classList.add("table", "table-striped", "table-bordered");
+
+    var thead = document.createElement("thead");
+    var tbody = document.createElement("tbody");
+    var tfoot = document.createElement("tfoot");
+
+    // Create header row
+    var headerRow = document.createElement("tr");
+    var properties = Object.keys(features[0].properties);
+    properties.forEach(function (prop) {
+        var th = document.createElement("th");
+        th.appendChild(document.createTextNode(prop));
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+
+    // Initialize sums object
+    var sums = {};
+    properties.forEach(function (prop) {
+        sums[prop] = 0;
+    });
+
+    // Create data rows
+    features.forEach(function (feature, index) {
+        var row = document.createElement("tr");
+        row.setAttribute("data-feature-id", index); // Set data-feature-id attribute
+        properties.forEach(function (prop) {
+            var td = document.createElement("td");
+            var value = feature.properties[prop];
+            td.appendChild(document.createTextNode(value));
+            row.appendChild(td);
+            if (typeof value === 'number') {
+                sums[prop] += value;
+            }
+        });
+        tbody.appendChild(row);
+    });
+
+    // Create footer row for sums
+    var footerRow = document.createElement("tr");
+    properties.forEach(function (prop) {
+        var td = document.createElement("td");
+        td.appendChild(document.createTextNode(sums[prop]));
+        footerRow.appendChild(td);
+    });
+    tfoot.appendChild(footerRow);
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    table.appendChild(tfoot);
+
+    return table.outerHTML;
+}
+
+function clearAttributeTable() {
+    var sidebarContainer = document.getElementById("attributeTableContainer");
+    var modalContainer = document.getElementById("modalAttributeTableContainer");
+    sidebarContainer.innerHTML = ""; // Clear existing table in sidebar
+    modalContainer.innerHTML = ""; // Clear existing table in modal
+}
+
+function updateLayerToggle() {
+    var layerToggleDiv = document.getElementById("layerToggle");
+    layerToggleDiv.innerHTML = ""; // Clear existing checkboxes
+    loadedLayers.forEach(function (loadedLayer, index) {
+        var checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = true; // Default to visible
+        checkbox.id = "layerToggleCheckbox" + index;
+        checkbox.style.marginRight = "5px"; // Add padding to the right
+        checkbox.style.accentColor = "#007279"; // Set background color
+        checkbox.onchange = function () {
+            if (this.checked) {
+                map.addLayer(loadedLayer.layer);
+            } else {
+                map.removeLayer(loadedLayer.layer);
+            }
+            updateShapefileSelect(); // Update shapefile select dropdown after toggling layer
+        };
+        var label = document.createElement("label");
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(getFileName(loadedLayer.name))); // Get file name
+
+        var container = document.createElement("div"); // Create a container for each checkbox and label
+        container.appendChild(label);
+
+        layerToggleDiv.appendChild(container); // Append the container
+        layerToggleDiv.appendChild(document.createElement("br"));
+    });
+    updateShapefileSelect(); // Update shapefile select dropdown after loading layers
+}
+
+function getFileName(path) {
+    var fileNameWithExtension = path.split("/").pop(); // Assuming path uses forward slash as separator
+    var fileNameWithoutExtension = fileNameWithExtension.split(".")[0]; // Remove file extension
+    var fileNameWithSpaces = fileNameWithoutExtension.replace(/_/g, " "); // Remove underscores and add spaces
+    return fileNameWithSpaces;
+}
+
+function addRowClickListeners(features, layer) {
+    var rows = document.querySelectorAll("#attributeTableContainer tbody tr");
+    rows.forEach(function(row) {
+        row.addEventListener("click", function() {
+            var featureId = this.getAttribute("data-feature-id");
+            var feature = features[featureId];
+            highlightFeature(layer, feature);
+        });
+    });
+}
+
+function highlightFeature(layer, feature) {
+    // Remove the previous highlighted layer if it exists
+    if (highlightedFeatureLayer) {
+        map.removeLayer(highlightedFeatureLayer);
+    }
+
+    // Create a Leaflet GeoJSON layer for the highlighted feature
+    highlightedFeatureLayer = L.geoJSON(feature, {
+        pointToLayer: function (geoJsonPoint, latlng) {
+            // Change the marker color and size for the highlighted feature
+            return L.circleMarker(latlng, {
+                radius: 8,
+                color: 'red',
+                fillColor: 'red',
+                fillOpacity: 0.8
+            });
+        },
+        style: function (geoJsonFeature) {
+            // Change the style of the highlighted polygon or line feature
+            return {
+                color: 'red',
+                weight: 5,
+                opacity: 1,
+                fillOpacity: 0.7
+            };
+        }
+    });
+
+    // Add the highlighted layer to the map
+    highlightedFeatureLayer.addTo(map);
+
+    // Zoom to the bounds of the highlighted feature
+    map.fitBounds(highlightedFeatureLayer.getBounds());
+}
+</script>
+
+
+    {% endblock %}

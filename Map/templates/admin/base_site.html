@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrahead %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">My Admin Panel</a></h1>
+{% endblock %}
+
+{% block user-tools %}
+<div id="user-tools">
+    {{ block.super }}
+
+    {% if user.is_authenticated %}
+        <div class="admin-notifications">
+            <a href="{% url 'admin:notifications' %}" class="notifications-link">
+                Notifications ({{ request.user.notifications.unread.count }})
+            </a>
+            <ul class="notifications-dropdown">
+                {% for notification in request.user.notifications.unread.all %}
+                    <li>{{ notification.actor }} {{ notification.verb }} <a href="{{ notification.data.get_url }}">View</a></li>
+                {% empty %}
+                    <li>No new notifications</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+

@@ -1,0 +1,112 @@
+
+
+a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.container1 {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 2%;
+    margin-bottom: 12%;   
+}
+
+   #shp-input {
+    position: absolute;
+    top: 70px;
+    left: 50px;
+    z-index: 1000;
+    background-color: white;
+    padding: 15px;
+    border-radius: 10px;
+    display: block;
+    line-height: 10px;
+   }
+/* Set map container size */
+#map {
+       height: 812px;
+       width: 100%;
+       position: relative;
+   }
+
+   /* Style for top buttons */
+    #top-buttons {
+   top: 68px;
+   left: 63px;
+   z-index: 1000;
+   background-color: white;
+   padding: 5px;
+   gap: 10px;
+} 
+
+
+.btn {
+ border: 1px solid grey;
+}
+
+
+.registration-form {
+width: 23rem;
+border: 1px solid #e3e3e3;
+padding: 50px 25px;
+border-radius: 20px;
+}
+
+.form-group {
+    margin: 5px;
+}
+
+.submit-button {
+    width: 100%;
+    margin-top: 5px;
+}
+
+
+
+/* Edit_profile */
+
+.edit-profile, .profile {
+    width: 50%;
+    margin-left: 25%;
+    margin-right: 25%;
+    margin-top: 5%;
+    margin-bottom: 10%;
+}
+
+.name {
+    color: brown;
+    }
+
+
+/* file format */
+
+.file-format {
+    margin: 5px 0px;
+    font-size: 12px;
+    background-color: #ff000029;
+    padding: 5px;
+    
+}
+
+/* map create */
+
+.map-create-container {
+    width: 60%;
+    border: 1px solid #e3e3e3;
+    padding: 50px 25px;
+    border-radius: 20px;
+}
+
+
+.map-list-container {
+    border: none!important;
+
+}
+
+
+
+
+

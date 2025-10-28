@@ -1,0 +1,419 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} My Profile {% endblock %}
+
+{% block head %}
+
+<title>My Dashboard</title>
+
+{% endblock %}
+
+{% block body %}
+
+
+<!-- Profile 1 - Bootstrap Brain Component -->
+<section class=" py-3 py-md-5 py-xl-8" style="background-image: url('http://gis.vnode.digital/static/gis-map-gallery-bg.webp'); 
+                    background-size: cover; 
+                    background-position: center;
+                    width: 100%; 
+                    min-height: 86.8vh;">
+  <div class="container">
+    <div class="row justify-content-md-center">
+      <div class="col-12 col-md-10 col-lg-8 col-xl-7 col-xxl-6">
+        <h2 class="mb-4 display-5 text-center" style="color:#dc3545; font-family: Inter; text-transform: uppercase;">{{profile.full_name}}'s Dashboard</h2>
+        <div class="create-map">
+          <a class="btn create-map-btn" data-bs-target="#exampleModalToggle" data-bs-toggle="modal" type="button">Create New Map</a>
+          <a class="btn backup-btn" href="{% url 'Login:backup_list' %}" type="button">Backups</a>
+        </div>
+        <hr class="w-50 mx-auto mb-5 mb-xl-9 border-dark-subtle">
+        <div>
+          {% if messages %}
+            {% for message in messages %}
+        <div class="alert text-center {% if 'success' in message.tags %}alert-success{% elif 'error' in message.tags %}alert-danger{% else %}alert-info{% endif %}" role="alert">
+            {{ message|safe }}
+        </div>
+        <div class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|safe }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+        
+    
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+      <div class="">
+        <div class="card widget-card border-light shadow-sm">
+          <div class="card-body p-4">
+            <ul class="nav nav-tabs" id="profileTab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active tab-btn" id="published-tab" data-bs-toggle="tab" data-bs-target="#published-tab-pane" type="button" role="tab" aria-controls="published-tab-pane" aria-selected="true">Published</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link tab-btn" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-tab-pane" type="button" role="tab" aria-controls="pending-tab-pane" aria-selected="false">Pending</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link tab-btn" id="reject-tab" data-bs-toggle="tab" data-bs-target="#reject-tab-pane" type="button" role="tab" aria-controls="reject-tab-pane" aria-selected="false">Reject</button>
+              </li>
+            </ul>
+      
+            <div id="map-list-container" class="p-4">
+              <div class="map-list-div">
+                {% for map in maps %}
+                  <div class="card map-item" data-status="{{ map.status }}" style="width: 18rem;">
+                    <a href="{% url 'Map:map_detail' map_id=map.id %}">
+                      {% if map.thumbnail %}
+                        <img class="card-img-top" style="width: 285px; height: 165px;" src="{{ map.thumbnail.url }}" alt="Card image cap">
+                      {% else %}
+                        <img class="card-img-top" style="width: 285px; height: 165px;" src="{% static 'Default-thum.png' %}" alt="Card image cap">
+                      {% endif %}
+                      <h5 class="card-title">{{ map.title }}</h5>
+                      <p class="card-text">{{ map.description }}</p>
+                      <div class="meta-container">
+                        <div class="map-meta"><span class="material-symbols-outlined">person</span>{{ map.user.username }}</div>
+                        <div class="map-meta"><span class="material-symbols-outlined">calendar_month</span>{{ map.publishing_date|date:"Y-m-d" }}</div>
+                        <div class="map-meta"><span class="material-symbols-outlined">visibility</span>{{ map.views_count }}</div>
+                      </div>
+                      <a href="{% url 'Map:edit_map' map.id %}" class="btn edit-btn">Edit</a>
+                    </a>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  </div>
+</section>
+
+ <!-- Create Map Modal Form    -->
+ <div>
+  <div class="modal fade" id="exampleModalToggle" aria-labelledby="exampleModalToggleLabel" tabindex="-1" aria-hidden="true" style="display: none;">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header" style="background-color: #007279;">
+            <h1 class="modal-title fs-5 text-white" id="exampleModalToggleLabel">Create New Map</h1>
+            <button type="button" style="color: red;" class="btn-close text-danger" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form  method="post" enctype="multipart/form-data" id="mapForm">
+              {% csrf_token %}
+              <div class="form-group">
+                  <label for="title">Title</label>
+                  <input type="text" class="form-control" id="title" name="title" placeholder="Title">
+                  {% if form.title.errors %}
+              <div class="text-danger">
+                  {% for error in form.title.errors %}
+                      <p>{{ error }}</p>
+                  {% endfor %}
+              </div>
+                  {% endif %}
+              </div>
+              <div class="form-group">
+                  <label for="thumbnail">Thumbnail</label>
+                  <input type="file" class="form-control-file" id="thumbnail" name="thumbnail">
+                  <small id="thumbnailHelp" class="form-text text-muted">Select a thumbnail image to upload.</small>
+              </div>
+              <div class="form-group">
+                  <label for="files">Files</label>
+                  <div id="fileInputsContainer">
+                      <input type="file" class="form-control-file" accept=".zip, .geojson, .csv, .kmz" name="files[]" multiple required>
+                  </div>
+                  <div style="background-color: #00727945; inline-size: 60%; padding: 5px 10px; margin: 5px;">supported files: shapefile(.zip), Geojson, .csv, .kmz</div>
+                  <button type="button" id="addFileInput" class="btn btn-secondary">Add Another File</button>
+                  <small id="fileHelp" class="form-text text-muted">Select one file at a time to upload.</small>
+              </div>
+              <hr>
+              <button type="submit" class="map-submit-btn btn text-white">Submit</button>
+          </form>
+          <script>
+              document.addEventListener('DOMContentLoaded', function() {
+                  var addFileInputButton = document.getElementById('addFileInput');
+                  var fileInputsContainer = document.getElementById('fileInputsContainer');
+                  addFileInputButton.addEventListener('click', function() {
+                      var newInput = document.createElement('input');
+                      newInput.type = 'file';
+                      newInput.name = 'files[]';
+                      newInput.classList.add('form-control-file');
+                      fileInputsContainer.appendChild(newInput);
+                  });
+              });
+          </script>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+  // Function to filter maps by status
+  function filterMaps(status) {
+    const mapItems = document.querySelectorAll('.map-item');
+    mapItems.forEach(item => {
+      if (item.getAttribute('data-status') === status) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  // Default display: Show "published" maps
+  filterMaps('published');
+
+  // Add event listeners for tab clicks
+  const tabs = document.querySelectorAll('.nav-link');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', function () {
+      const targetStatus = this.id.split('-')[0]; // Get status from id (e.g., "published", "pending", "reject")
+      filterMaps(targetStatus);
+    });
+  });
+});
+</script>
+
+<style>
+  @media only screen and (max-width: 600px) {
+    .card {
+      width: 100%;
+    }
+    .tab-btn {
+      margin: 0px;
+    }
+  }
+  
+  a {
+      text-decoration: none;
+  }
+  .edit-btn {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      color: white;
+      padding: 3px 8px;
+      background-color: #007279;
+      font-size: 12px;
+  }
+  
+  .edit-btn:hover {
+      color: white;
+      background-color: #dc3545;
+  }
+  .map-list-div {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+  }
+  
+  
+  .map-list-title {
+      font-size: 2.0rem;
+      text-align: center;
+      color: white;
+      background-color: #007279;
+      margin-bottom: 25px;
+      padding: 5px;
+  
+  }
+  
+  .row {
+      --bs-gutter-x: 0;
+  }
+  
+  .left-container {
+      box-shadow: 3px 0px 5px rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      z-index: 999;
+  }
+  
+  /* map list  */
+  div#map-list-container {
+    display: flex;
+    padding: 25px 5px 5px 5px !important;
+    justify-content: center;
+}
+
+
+  .map-meta {
+      display: flex; align-items: center;
+      color: #007279;
+    }
+    
+    .meta-container {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      padding: 5px;
+    }
+
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+    
+    .card-body {
+        padding: 0.5rem;
+        background-color: #0072790d;
+    }
+  
+    h5.card-title {
+      color: #dc3545;
+  }
+
+
+/* ...................... */
+.card-title {
+  color: white;
+  text-align: center;
+}
+
+.card-body .nav-link {
+    color: #007279;
+}
+
+
+.create-map-btn {
+  border-radius: 4px;
+  background-color: #dc3545;
+  border: none;
+  color: #fff;
+  text-align: center;
+  font-size: 20px;
+  width: 220px;
+  transition: all 0.5s;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -8px rgba(95, 95, 95, 0.7);
+}
+
+.create-map-btn{
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+  transition: 0.5s;
+}
+
+.create-map-btn:after {
+  content: '»';
+  color: #ffff;
+  position: absolute;
+  opacity: 0;  
+  top: 8px;
+  right: -20px;
+  transition: 0.5s;
+}
+
+.create-map-btn:hover{
+  padding-right: 10px;
+  padding-left:8px;
+  background-color: #007279;
+  color: #ffff;
+}
+
+.create-map-btn:hover:after {
+  opacity: 1;
+  right: 20px;
+}
+
+.create-map{
+  text-align: center;
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.backup-btn {
+  border-radius: 4px;
+  background-color: #007279;
+  border: none;
+  color: #fff;
+  text-align: center;
+  font-size: 20px;
+  width: 220px;
+  transition: all 0.5s;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -8px rgba(95, 95, 95, 0.7);
+}
+
+.backup-btn{
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+  transition: 0.5s;
+}
+
+.backup-btn:after {
+  content: '⚙';
+  color: #ffff;
+  position: absolute;
+  opacity: 0;  
+  top: 8px;
+  right: -20px;
+  transition: 0.5s;
+}
+
+.backup-btn:hover{
+  padding-right: 10px;
+  padding-left:8px;
+  background-color: #28a745;
+  color: #ffff;
+}
+
+.backup-btn:hover:after {
+  opacity: 1;
+  right: 20px;
+}
+
+button, input, optgroup, select, textarea {
+    margin: 5px;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+input.form-control-file {
+    width: 100%;
+}
+
+/* Create map form  */
+.form-group {
+    margin: 15px 0px;
+    background-color: #0072790d;
+    border-radius: 5px;
+    padding: 10px 20px;
+    box-shadow: 1px 2px 0px #00727917;
+}
+
+
+label {
+    color: #007279;
+}
+
+
+.map-submit-btn {
+  background-color: #007279; 
+  padding: 8px 40px;
+}
+.map-submit-btn:hover {
+  background-color: #dc3545; 
+  padding: 8px 40px;
+}
+
+</style>
+
+{% endblock %}
+
+
+

@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Maps Gallery {% endblock %}
+
+{% block head %}
+
+<title>Maps Gallery</title>
+
+{% endblock %}
+
+{% block body %}
+
+<div class="bg overlay"
+            style="background-image: url('http://gis.vnode.digital/static/gis-map-gallery-bg.webp'); 
+                    background-size: cover; 
+                    background-position: center;
+                    width: 100%; 
+                    min-height: 86.8vh;">
+<div class="container" style="justify-items: center;">
+    <div id="map-list-container" class="map-list-container" style="min-height: 76vh; border: none!important;">
+      <div class="map-list-title">
+            <h2>Map Gallery</h2>
+        </div>
+      {% if user_status != 'visitor' and user_status != None %}
+      <div class="create-map">
+        <a class="btn create-map-btn" data-bs-target="#exampleModalToggle" data-bs-toggle="modal" type="button">Create New Map</a>
+      </div>
+      {% endif %}
+
+   {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-danger text-center" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+<div class="map-list-div" style="display: flex; flex-wrap: wrap;">
+{% for map in maps %}
+
+<a href="{% url 'Map:map_detail' map_id=map.id %}">
+<div class="card" style="width: 17.5rem;">
+  <h5 class="card-title">{{map.title}}</h5>
+  {% if map.thumbnail %}
+    <img class="card-img-top" style="width: 278px; height: 165px;" src="{{ map.thumbnail.url }}" alt="Card image cap">
+{% else %}
+    <img class="card-img-top" style="width: 278px; height: 165px;" src="{% static 'Default-thum.png' %}" alt="Card image cap">
+{% endif %}
+    <div class="card-body">
+      <div class="meta-container">
+        <div class="map-meta"><span class="material-symbols-outlined">person</span>{{ map.user.username }}</div>
+        <div class="map-meta"><span class="material-symbols-outlined">calendar_month</span>{{map.publishing_date|date:"Y-m-d"}}</div>
+        <div class="map-meta"><span class="material-symbols-outlined">visibility</span>{{map.views_count}}</div>
+      </div>
+    </div>
+  </div>
+</a>
+
+  {% endfor %}
+</div>
+<hr>
+<!-- Pagination Controls -->
+<div class="pagination-controls" style="margin: 30px 10px;">
+  <ul class="pagination">
+      {% if maps.has_previous %}
+      <li class="page-item">
+          <a class="page-link" href="?page={{ maps.previous_page_number }}">Previous</a>
+      </li>
+      {% endif %}
+
+      {% for num in maps.paginator.page_range %}
+      <li class="page-item {% if maps.number == num %}active{% endif %}">
+          <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+      </li>
+      {% endfor %}
+
+      {% if maps.has_next %}
+      <li class="page-item">
+          <a class="page-link" href="?page={{ maps.next_page_number }}">Next</a>
+      </li>
+      {% endif %}
+  </ul>
+</div>
+
+<!-- Pagination Controls End-->
+
+    <!-- {% if user_status != 'visitor' and user_status != None %}
+    <a class="btn Create-btn mt-5" href="{% url 'Map:create_map' %}">Create New Map</a>
+    {% endif %} -->
+
+ <!-- Create Map Modal Form    -->
+<div>
+  <div class="modal fade" id="exampleModalToggle" aria-labelledby="exampleModalToggleLabel" tabindex="-1" aria-hidden="true" style="display: none;">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header" style="background-color: #007279;">
+            <h1 class="modal-title fs-5 text-white" id="exampleModalToggleLabel">Create New Map</h1>
+            <button type="button" style="color: red;" class="btn-close text-danger" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form  method="post" enctype="multipart/form-data" id="mapForm">
+              {% csrf_token %}
+              <div class="form-group">
+                  <label for="title">Title</label>
+                  <input type="text" class="form-control" id="title" name="title" placeholder="Title">
+                  {% if form.title.errors %}
+              <div class="text-danger">
+                  {% for error in form.title.errors %}
+                      <p>{{ error }}</p>
+                  {% endfor %}
+              </div>
+                  {% endif %}
+              </div>
+              <div class="form-group">
+                  <label for="thumbnail">Thumbnail</label>
+                  <input type="file" class="form-control-file" id="thumbnail" name="thumbnail">
+                  <small id="thumbnailHelp" class="form-text text-muted">Select a thumbnail image to upload.</small>
+              </div>
+              <div class="form-group">
+                  <label for="files">Files</label>
+                  <div id="fileInputsContainer">
+                      <input type="file" class="form-control-file" accept=".zip, .geojson, .csv, .kmz" name="files[]" multiple required>
+                  </div>
+                  <div style="background-color: #00727945; inline-size: 60%; padding: 5px 10px; margin: 5px;">supported files: shapefile(.zip), Geojson, .csv, .kmz</div>
+                  <button type="button" id="addFileInput" class="btn btn-secondary">Add Another File</button>
+                  <small id="fileHelp" class="form-text text-muted">Select one file at a time to upload.</small>
+              </div>
+              <hr>
+              <button type="submit" class="btn text-white map-submit-btn" >Submits</button>
+          </form>
+          
+  
+  
+          <script>
+              document.addEventListener('DOMContentLoaded', function() {
+                  var addFileInputButton = document.getElementById('addFileInput');
+                  var fileInputsContainer = document.getElementById('fileInputsContainer');
+                  
+                  addFileInputButton.addEventListener('click', function() {
+                      var newInput = document.createElement('input');
+                      newInput.type = 'file';
+                      newInput.name = 'files[]';
+                      newInput.classList.add('form-control-file');
+                      fileInputsContainer.appendChild(newInput);
+                  });
+              });
+          </script>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<style>
+  a {
+    text-decoration: none!important;
+  }
+  @media screen and (max-width: 600px) {
+    .card {
+      width: 100%;
+    }
+
+    .map-list-container {
+    width: 95%!important;
+}
+  }
+  
+  .edit-btn {
+      position: absolute;
+      top: 5px;
+      color: white;
+      padding: 3px 8px;
+      background-color: #007279;
+      font-size: 12px;
+  }
+  
+  .edit-btn:hover {
+      color: white;
+      background-color: #dc3545;
+  }
+  .map-list-div {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+  }
+  
+  
+  .map-list-title h2 {
+      font-size: 3rem!important;
+      font-family: 'Inter';
+      font-weight: 800;
+      text-align: center;
+      color: #dc3545;
+      margin-bottom: 25px;
+      padding: 1px;
+      border-radius: 5px;
+      text-transform: uppercase;
+
+  
+  }
+  
+  .row {
+      --bs-gutter-x: 0;
+  }
+  
+  .left-container {
+      box-shadow: 3px 0px 5px rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      z-index: 999;
+  }
+  
+  /* map list  */
+  
+  .map-list-container {
+    width: 80%;
+    padding: 40px 25px 0px 25px;
+    border-radius: 20px;
+    background-color: #0072790d;
+}
+  .map-meta {
+      display: flex; align-items: center;
+      color: #007279;
+    }
+    
+    .meta-container {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+    
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+    
+    .card-body {
+        padding: 0.5rem;
+        background-color: #d3d3d33b;
+    }
+  
+    h5.card-title {
+      color: #007279;
+      font-size: 1rem;
+      padding: 3px 10px;
+  }
+
+  .Create-btn {
+    background-color: #007279;
+    color: white;
+  }
+  
+
+  button, input, optgroup, select, textarea {
+    margin: 5px;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+input.form-control-file {
+    width: 100%;
+}
+
+.form-group {
+    margin: 15px 0px;
+    background-color: #0072790d;
+    border-radius: 5px;
+    padding: 10px 20px;
+    box-shadow: 1px 2px 0px #00727917;
+}
+
+label {
+    color: #007279;
+}
+
+.map-submit-btn {
+  background-color: #007279; 
+  padding: 8px 40px;
+}
+.map-submit-btn:hover {
+  background-color: #dc3545; 
+  padding: 8px 40px;
+}
+
+.create-map-btn {
+  border-radius: 4px;
+  background-color: #dc3545;
+  border: none;
+  color: #fff;
+  text-align: center;
+  font-size: 20px;
+  width: 220px;
+  transition: all 0.5s;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -8px rgba(95, 95, 95, 0.7);
+}
+
+.create-map-btn{
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+  transition: 0.5s;
+}
+
+.create-map-btn:after {
+  content: '»';
+  color: #ffff;
+  position: absolute;
+  opacity: 0;  
+  top: 8px;
+  right: -20px;
+  transition: 0.5s;
+}
+
+.create-map-btn:hover{
+  padding-right: 10px;
+  padding-left:8px;
+  background-color: #007279;
+  color: #ffff;
+}
+
+.create-map-btn:hover:after {
+  opacity: 1;
+  right: 20px;
+}
+
+.create-map{
+  text-align: center;
+  margin: 20px 0px;
+}
+
+/* Pagination  */
+.pagination .page-item a {
+        color: #dc3545; /* Normal text color */
+        text-decoration: none;
+        border: 1px solid #dc3545; /* Optional: Add a border */
+        border-radius: 4px;
+        padding: 5px 15px;
+        margin: 0 2px;
+        
+    }
+
+    .pagination .page-item.active a {
+        background-color: #dc3545; /* Active background color */
+        color: white; /* Active text color */
+        border: 1px solid #dc3545; /* Match border with background */
+    }
+
+    .pagination .page-item a:hover {
+        color: white; /* Hover text color */
+        background-color: #dc3545;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        list-style: none;
+        padding: 0;
+        gap: 10px;
+    }
+/* Pagination End  */
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var createMapBtn = document.getElementById('createMapBtn');
+
+    createMapBtn.addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default action of following the link
+
+        // Create the alert div
+        var alertDiv = document.createElement('div');
+        alertDiv.classList.add('alert', 'alert-danger');
+        alertDiv.textContent = "You don't have permission to create a map.";
+
+        // Select the container element using a class selector
+        var container = document.querySelector('.container'); // Change '.container' to the appropriate class selector
+
+        // Check if the container element exists
+        if (container) {
+            // Append the alert div to the container
+            container.insertBefore(alertDiv, container.firstChild);
+        } else {
+            console.error('Container element not found.');
+        }
+    });
+});
+  </script>
+
+
+{% endblock %}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Map with Attributes</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <style>
+        #map { height: 600px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([51.505, -0.09], 13);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Initialize FeatureGroup to store editable layers
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // Initialize the draw control and pass it the FeatureGroup of editable layers
+        var drawControl = new L.Control.Draw({
+            draw: {
+                polygon: true,
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                circlemarker: false,
+                marker: false
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        map.addControl(drawControl);
+
+        // Event handler for when a new feature (shape) is created
+        map.on(L.Draw.Event.CREATED, function (event) {
+            var layer = event.layer;
+            
+            // Prompt user for attribute values (in a real application, you might have a form for this)
+            var name = prompt('Enter name for this feature:', 'New Feature');
+            var description = prompt('Enter description:', 'Description');
+            
+            // Add custom attributes to the feature
+            layer.feature = {
+                type: 'Feature',
+                properties: {
+                    name: name,
+                    description: description
+                },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [layer.getLatLngs().map(function(latlng) {
+                        return [latlng.lng, latlng.lat];
+                    })]
+                }
+            };
+            
+            drawnItems.addLayer(layer);
+            layer.bindPopup('Polygon added with name: ' + name + ', description: ' + description);
+        });
+
+        // Event handler for when a feature is edited
+        map.on(L.Draw.Event.EDITED, function (event) {
+            var layers = event.layers;
+            layers.eachLayer(function (layer) {
+                // Example: Update attributes as needed (prompt user for new values)
+                var newName = prompt('Enter new name for this feature:', layer.feature.properties.name);
+                var newDescription = prompt('Enter new description:', layer.feature.properties.description);
+                
+                layer.feature.properties.name = newName;
+                layer.feature.properties.description = newDescription;
+                
+                layer.bindPopup('Updated Polygon with name: ' + newName + ', description: ' + newDescription);
+            });
+        });
+    </script>
+</body>
+</html>

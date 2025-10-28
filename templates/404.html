@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Error 500 {% endblock %}
+
+{% block head %}
+
+<title>Error 500</title>
+
+{% endblock %}
+
+{% block body %}
+
+<style>
+
+
+        .error-container {
+            text-align: center;
+            padding-top: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            height: 100vh;
+        }
+
+        h1 {
+            color: #c0392b;
+            margin-bottom: 20px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+    </style>
+
+<div class="error-container">
+        <h1>Page Not Found (404)</h1>
+        <p>Oops! The page you're looking for doesn't seem to exist.</p>
+        <p>You may have typed the address incorrectly or the page may have been moved or deleted.</p>
+        <p>You can try to <a href="/">return to the homepage</a>.</p>
+        <p>Or you can use the search bar to find what you're looking for.</p> 
+    </div>
+
+
+
+{% endblock %}

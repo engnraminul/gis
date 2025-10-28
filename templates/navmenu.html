@@ -1,0 +1,203 @@
+<nav style="z-index: 999" class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+      <a style="padding-top: 0px; padding-bottom: 0px; font-size: 2rem;" class="navbar-brand fw-bold" href="{% url 'Map:home' %}"><span style="color: #dc3545;">GIS</span> Portal</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0" style="margin-left: 35%;">
+         
+          <li class="nav-item">
+            <a class="nav-link" aria-current="page" href="{% url 'Map:home' %}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'Map:map_list' %}">Maps</a>
+          </li>
+          {% if user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'Login:dashboard' %}">Dashboard</a>
+          </li>
+          {% endif %}
+          
+        </ul>
+
+        <div class="dropdown">
+        <button class="btn btn-sm dropdown-toggle user-icon-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="material-symbols-outlined">person</span>
+        </button>
+        <ul class="dropdown-menu" >
+          {% if user.is_authenticated %}
+          <a class="nav-link dropdown-list" href="{% url 'Login:profile' %}">Profile</a>
+          <a class="nav-link dropdown-list" href="{% url 'Login:dashboard' %}">Dashboard</a>
+          <a class="nav-link dropdown-list" href="{% url 'Login:user_logout' %}">Logout</a>
+        {% else %}
+            <a class="nav-link dropdown-list" href="{% url 'Login:user_login' %}">Login</a>
+        {% endif %}
+        </ul>
+      </div>
+
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- offcanvas -->
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel" style="z-index: 9999">
+    <div class="offcanvas-header">
+      <a style="padding-top: 0px; padding-bottom: 0px; font-size: 2rem;" class="navbar-brand fw-bold" href="{% url 'Map:home' %}"><span style="color: #dc3545;">GIS</span> Portal</a>
+      <span><span><div class="dropdown">
+        <button class="btn btn-sm dropdown-toggle user-icon-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="material-symbols-outlined">person</span>
+        </button>
+        <ul class="dropdown-menu" >
+          {% if user.is_authenticated %}
+          <a class="nav-link dropdown-list" href="{% url 'Login:profile' %}">Profile</a>
+          <a class="nav-link dropdown-list" href="{% url 'Login:dashboard' %}">Dashboard</a>
+          <a class="nav-link dropdown-list" href="{% url 'Login:user_logout' %}">Logout</a>
+        {% else %}
+            <a class="nav-link dropdown-list" href="{% url 'Login:user_login' %}">Login</a>
+        {% endif %}
+        </ul>
+      </div></span></span>
+      <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="" style="margin-top: 70px!important;">
+        <ul>
+          <li class="">
+            <a class="" aria-current="page" href="{% url 'Map:home' %}">
+              <i class="fas fa-home"></i> Home
+            </a>
+            <hr>
+          </li>
+          <li class="">
+            <a class="" href="{% url 'Map:map_list' %}">
+              <i class="fas fa-map"></i> Maps
+            </a>
+            <hr>
+          </li>
+          {% if user.is_authenticated %}
+          <li class="">
+            <a class="" href="{% url 'Login:dashboard' %}">
+              <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <hr>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    {% include 'footer.html' %}
+  </div>
+  <!-- offcanvas  -->
+
+
+
+
+  <style>
+      /*........................................ Navbar */
+      li a {
+    color: #007279;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+li {
+  list-style-type:none;
+}     
+.offcanvas-header {
+  background-color: #007279;
+}
+
+      .navbar {
+    box-shadow: 0px 0px 8px grey;
+}
+
+.navbar-brand:hover {
+  color: #dc3545;
+}
+.nav-item {
+    font-size: 20px;
+}
+
+/* account icon */
+.user-icon-button {
+    margin-left: 10px;
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    border: 1px solid white;
+    color: white;
+    
+}
+
+.user-icon-button:hover {
+    color: #dc3545;
+    border: 1px solid white;
+    background-color: white;
+    
+}
+
+button, input, optgroup, select, textarea {
+    font-size: 13px;
+}
+
+ .navbar>.container-fluid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    }
+
+
+.container-fluid {
+    justify-content: space-around; 
+    margin-left: 10%; 
+    margin-right: 10%;
+} 
+
+
+.login {
+    color:blue;
+}
+
+.navbar {
+    background-color: #007279;
+  }
+  .nav-link{
+    color: white;
+  }
+  .nav-link:hover{
+    color: #dc3545;
+  }
+
+  .navbar-brand {
+    color: white;
+  }
+  .dropdown-menu.show {
+    padding: 10px;
+}
+  .dropdown-list {
+    color: black;
+  }
+  .dropdown-list:hover {
+    color: white;
+    background-color: #007279;
+    padding-left: 5px;
+  }
+
+  .search-btn {
+  border: 1px solid white;
+  color: white;
+  }
+
+  .search-btn:hover {
+color: #007279;
+background-color: white;
+  }
+
+  </style>
+  
+  

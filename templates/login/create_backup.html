@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Create Backup - GIS Portal{% endblock %}
+
+{% block head %}
+<title>Create New Backup</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
+
+{% block body %}
+<section class="py-3 py-md-5" style="background-image: url('/media/gis-map-gallery-bg.webp'); 
+                                    background-size: cover; 
+                                    background-position: center;
+                                    min-height: 100vh;">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        
+        <!-- Header -->
+        <div class="text-center mb-4">
+          <h1 class="display-5 text-white mb-3">
+            <i class="fas fa-plus-circle me-3"></i>Create New Backup
+          </h1>
+          <p class="lead text-light">Generate a new system backup</p>
+        </div>
+
+        <!-- Messages -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert {% if 'success' in message.tags %}alert-success{% elif 'error' in message.tags %}alert-danger{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+              {{ message|safe }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Create Backup Form -->
+        <div class="card shadow-lg">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Backup Configuration</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" id="backupForm">
+              {% csrf_token %}
+              
+              <!-- Backup Type -->
+              <div class="mb-4">
+                <label for="backup_type" class="form-label">
+                  <i class="fas fa-layer-group me-2"></i>Backup Type
+                </label>
+                <select class="form-select" id="backup_type" name="backup_type" required>
+                  <option value="full" selected>Full Backup (Database + Media Files)</option>
+                  <option value="database">Database Only</option>
+                  <option value="media">Media Files Only</option>
+                </select>
+                <div class="form-text">
+                  <small>
+                    <strong>Full:</strong> Complete system backup<br>
+                    <strong>Database:</strong> User data, maps, profiles<br>
+                    <strong>Media:</strong> Uploaded files, images, documents
+                  </small>
+                </div>
+              </div>
+
+              <!-- Description -->
+              <div class="mb-4">
+                <label for="description" class="form-label">
+                  <i class="fas fa-comment me-2"></i>Description (Optional)
+                </label>
+                <textarea class="form-control" id="description" name="description" rows="3" 
+                          placeholder="Add a note about this backup..."></textarea>
+              </div>
+
+              <!-- Estimated Size Info -->
+              <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Backup Information:</strong>
+                <ul class="mb-0 mt-2">
+                  <li>Backup will be saved as a ZIP file</li>
+                  <li>Process may take several minutes depending on data size</li>
+                  <li>You can download or restore the backup later</li>
+                </ul>
+              </div>
+
+              <!-- Submit Button -->
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg" id="createBtn">
+                  <i class="fas fa-play me-2"></i>Create Backup
+                </button>
+                <a href="{% url 'Login:backup_list' %}" class="btn btn-outline-secondary">
+                  <i class="fas fa-arrow-left me-2"></i>Back to Backup List
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Progress indicator (hidden by default) -->
+        <div id="progressCard" class="card shadow-lg mt-4" style="display: none;">
+          <div class="card-body text-center">
+            <div class="spinner-border text-primary mb-3" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>Creating Backup...</h5>
+            <p class="text-muted">Please wait while your backup is being created. Do not close this page.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+document.getElementById('backupForm').addEventListener('submit', function() {
+  // Show progress indicator
+  document.getElementById('progressCard').style.display = 'block';
+  
+  // Disable form
+  document.getElementById('createBtn').disabled = true;
+  document.getElementById('createBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating...';
+  
+  // Scroll to progress card
+  document.getElementById('progressCard').scrollIntoView({ behavior: 'smooth' });
+});
+</script>
+
+<style>
+.card {
+  border: none;
+  border-radius: 15px;
+}
+
+.card-header {
+  border-radius: 15px 15px 0 0 !important;
+}
+
+.form-select, .form-control {
+  border-radius: 10px;
+}
+
+.btn-lg {
+  border-radius: 10px;
+  padding: 0.75rem 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .display-5 {
+    font-size: 2rem;
+  }
+}
+</style>
+{% endblock %}

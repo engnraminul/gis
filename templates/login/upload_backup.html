@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Upload Backup - GIS Portal{% endblock %}
+
+{% block head %}
+<title>Upload Backup</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
+
+{% block body %}
+<section class="py-3 py-md-5" style="background-image: url('/media/gis-map-gallery-bg.webp'); 
+                                    background-size: cover; 
+                                    background-position: center;
+                                    min-height: 100vh;">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        
+        <!-- Header -->
+        <div class="text-center mb-4">
+          <h1 class="display-5 text-white mb-3">
+            <i class="fas fa-upload me-3"></i>Upload Backup
+          </h1>
+          <p class="lead text-light">Upload and optionally restore a backup file</p>
+        </div>
+
+        <!-- Messages -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert {% if 'success' in message.tags %}alert-success{% elif 'error' in message.tags %}alert-danger{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+              {{ message|safe }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Upload Form -->
+        <div class="card shadow-lg">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-cloud-upload-alt me-2"></i>Upload Backup File</h5>
+          </div>
+          <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+              {% csrf_token %}
+              
+              <!-- File Upload -->
+              <div class="mb-4">
+                <label for="backup_file" class="form-label">
+                  <i class="fas fa-file-archive me-2"></i>Backup File
+                </label>
+                <input type="file" class="form-control" id="backup_file" name="backup_file" 
+                       accept=".zip,.tar,.tar.gz" required>
+                <div class="form-text">
+                  <small>Supported formats: ZIP, TAR, TAR.GZ (Maximum size: 500MB)</small>
+                </div>
+              </div>
+
+              <!-- Description -->
+              <div class="mb-4">
+                <label for="description" class="form-label">
+                  <i class="fas fa-comment me-2"></i>Description (Optional)
+                </label>
+                <textarea class="form-control" id="description" name="description" rows="3" 
+                          placeholder="Add a note about this backup..."></textarea>
+              </div>
+
+              <!-- Restore Option -->
+              <div class="mb-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="restore_immediately" name="restore_immediately">
+                  <label class="form-check-label" for="restore_immediately">
+                    <i class="fas fa-undo me-2"></i>Restore immediately after upload
+                  </label>
+                </div>
+                <div class="form-text">
+                  <small class="text-warning">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Warning: This will overwrite current system data
+                  </small>
+                </div>
+              </div>
+
+              <!-- File Preview -->
+              <div id="filePreview" class="alert alert-secondary" style="display: none;">
+                <h6><i class="fas fa-file me-2"></i>Selected File:</h6>
+                <div id="fileName"></div>
+                <div id="fileSize"></div>
+              </div>
+
+              <!-- Upload Info -->
+              <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Upload Information:</strong>
+                <ul class="mb-0 mt-2">
+                  <li>Only upload backup files created by this system</li>
+                  <li>Upload may take several minutes for large files</li>
+                  <li>Ensure stable internet connection during upload</li>
+                </ul>
+              </div>
+
+              <!-- Submit Buttons -->
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-success btn-lg" id="uploadBtn">
+                  <i class="fas fa-upload me-2"></i>Upload Backup
+                </button>
+                <a href="{% url 'Login:backup_list' %}" class="btn btn-outline-secondary">
+                  <i class="fas fa-arrow-left me-2"></i>Back to Backup List
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Progress indicator (hidden by default) -->
+        <div id="progressCard" class="card shadow-lg mt-4" style="display: none;">
+          <div class="card-body text-center">
+            <div class="progress mb-3">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                   role="progressbar" style="width: 100%"></div>
+            </div>
+            <h5>Uploading Backup...</h5>
+            <p class="text-muted">Please wait while your backup is being uploaded. Do not close this page.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+// File preview
+document.getElementById('backup_file').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    document.getElementById('fileName').textContent = 'Name: ' + file.name;
+    document.getElementById('fileSize').textContent = 'Size: ' + (file.size / (1024*1024)).toFixed(2) + ' MB';
+    document.getElementById('filePreview').style.display = 'block';
+  } else {
+    document.getElementById('filePreview').style.display = 'none';
+  }
+});
+
+// Form submission
+document.getElementById('uploadForm').addEventListener('submit', function() {
+  const file = document.getElementById('backup_file').files[0];
+  
+  if (!file) {
+    alert('Please select a backup file to upload.');
+    return false;
+  }
+  
+  // Check file size (500MB limit)
+  if (file.size > 500 * 1024 * 1024) {
+    alert('File size exceeds 500MB limit. Please select a smaller file.');
+    return false;
+  }
+  
+  // Show progress
+  document.getElementById('progressCard').style.display = 'block';
+  document.getElementById('uploadBtn').disabled = true;
+  document.getElementById('uploadBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+  
+  // Scroll to progress
+  document.getElementById('progressCard').scrollIntoView({ behavior: 'smooth' });
+});
+</script>
+
+<style>
+.card {
+  border: none;
+  border-radius: 15px;
+}
+
+.card-header {
+  border-radius: 15px 15px 0 0 !important;
+}
+
+.form-control {
+  border-radius: 10px;
+}
+
+.btn-lg {
+  border-radius: 10px;
+  padding: 0.75rem 1.5rem;
+}
+
+.progress {
+  height: 1.5rem;
+}
+
+#filePreview {
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  .display-5 {
+    font-size: 2rem;
+  }
+}
+</style>
+{% endblock %}

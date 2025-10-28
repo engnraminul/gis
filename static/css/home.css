@@ -1,0 +1,190 @@
+#layerToggle {
+    top: 150px;
+    left: 50px;
+    z-index: 999;
+    background-color: white;
+    padding: 15px;
+    border-radius: 10px;
+    display: block;
+    line-height: 10px;
+   }
+
+   .dropdown-item:focus, .dropdown-item:hover {
+    color: #1e2125;
+    background-color: #055160;
+    color: red;
+}
+
+.dropdown-toggle {
+    color: white;
+    background-color: #007279;
+}
+
+#fileInput {
+    padding: 75px 20px 20px 20px;
+    border: 1px dotted grey;
+    background-image: url('https://gis.vnode.digital/media/import-file.png'); 
+    background-repeat: no-repeat; 
+    background-position: center top; 
+    background-size: 150px 60px;
+}
+
+
+
+/* leaflet draw */
+/* ul.leaflet-draw-actions.leaflet-draw-actions-top {
+    display: flex !important;
+    margin-left: -102px!important;
+    flex-direction: column;
+    gap: 33px;
+}
+
+
+.leaflet-draw-actions a {
+    background-color: #007279;
+}
+
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polygon {
+    background-position: 0px -1px;
+}
+.leaflet-touch .leaflet-bar a {
+    width: 34px;
+    height: 34px;
+    line-height: 30px;
+    border-radius: 25px;
+}
+
+.leaflet-touch .leaflet-bar a:first-child {
+    border-top-left-radius: 25px;
+    border-top-right-radius: 25px;
+}
+
+.leaflet-touch .leaflet-bar a:last-child {
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+}
+
+.leaflet-left {
+    left: 75%;
+    top: -150px;
+}
+
+.leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar {
+     border: 0px solid rgba(0, 0, 0, 0.2);
+}
+
+a.leaflet-control-zoom-in span {
+    display: none;
+}
+
+a.leaflet-control-zoom-out span {
+    display: none;
+}
+
+li.leaflet-measure-action .start {
+    width: 210px;
+    height: 28px;
+} */
+
+a.leaflet-control-zoom-in {
+    background-image: url("https://gis.vnode.digital/media/icon/zoom-in.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+} 
+
+a.leaflet-control-zoom-out {
+    background-image: url("https://gis.vnode.digital/media/icon/zoom-out.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+a.leaflet-draw-draw-polyline {
+    background-image: url("https://gis.vnode.digital/media/icon/polyline.png");
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polyline {
+    background-position: 0px 0px;
+}
+
+a.leaflet-draw-draw-polygon {
+    background-image: url("https://gis.vnode.digital/media/icon/polygon.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-polygon {
+    background-position: 0px 0px;
+}
+
+a.leaflet-draw-draw-rectangle {
+    background-image: url("https://gis.vnode.digital/media/icon/rectangle.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-rectangle {
+    background-position: 0px 0px;
+}
+
+a.leaflet-draw-draw-circle {
+    background-image: url("https://gis.vnode.digital/media/icon/circle.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-circle {
+    background-position: 0px 0px;
+}
+
+a.leaflet-draw-draw-marker {
+    background-image: url("https://gis.vnode.digital/media/icon/marker.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-marker {
+    background-position: 0px 0px;
+}
+
+a.leaflet-draw-draw-circlemarker {
+    background-image: url("https://gis.vnode.digital/media/icon/circle-marker.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-draw-circlemarker {
+    background-position: 0px 0px;
+}
+
+a.leaflet-draw-edit-edit.leaflet-disabled {
+    background-image: url("https://gis.vnode.digital/media/icon/edit.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+a.leaflet-draw-edit-edit {
+    background-image: url("https://gis.vnode.digital/media/icon/edit.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-edit-edit.leaflet-disabled {
+    background-position: 0px 0px;
+}
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-edit-edit {
+    background-position: 0px 0px;
+}
+
+a.leaflet-draw-edit-remove.leaflet-disabled {
+    background-image: url("https://gis.vnode.digital/media/icon/delete.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+a.leaflet-draw-edit-remove {
+    background-image: url("https://gis.vnode.digital/media/icon/delete.png") !important;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-edit-remove.leaflet-disabled {
+    background-position: 0px 0px;
+}
+
+.leaflet-touch .leaflet-draw-toolbar .leaflet-draw-edit-remove {
+    background-position: 0px -1px;
+}
+

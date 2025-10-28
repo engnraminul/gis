@@ -1,0 +1,308 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+::after,
+::before {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    text-decoration: none;
+}
+
+li {
+    list-style: none;
+}
+
+h1 {
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+}
+
+.wrapper {
+    display: flex;
+}
+
+#layerToggle {
+    padding: 0px;
+}
+
+.d-flex {
+    box-shadow: 0px 2px 5px #80808059;
+}
+
+.p-3 {
+    padding: 0rem !important;
+}
+
+.main {
+    /* min-height: 100vh; */
+    width: 100%;
+    overflow: hidden;
+    transition: all 0.35s ease-in-out;
+    background-color: #fafbfe;
+}
+
+#sidebar {
+    width: 70px;
+    min-width: 70px;
+    z-index: 1000;
+    transition: all .25s ease-in-out;
+    background-color: #ffff;
+    display: flex;
+    flex-direction: column;
+}
+
+#sidebar.expand {
+    width: 260px;
+    min-width: 260px;
+}
+
+.toggle-btn {
+    background-color: transparent;
+    cursor: pointer;
+    border: 0;
+    padding: 1rem 1.5rem;
+}
+
+.toggle-btn i {
+    font-size: 1.5rem;
+    color: #007279;
+}
+
+.sidebar-logo {
+    margin: auto 0;
+}
+
+.sidebar-logo a {
+    color: #007279;
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+#sidebar:not(.expand) .sidebar-logo,
+#sidebar:not(.expand) a.sidebar-link span {
+    display: none;
+}
+
+.sidebar-nav {
+    padding: 2rem 0;
+    flex: 1 1 auto;
+}
+
+a.sidebar-link, a.sidebar2-link {
+    padding: .625rem 0.5rem;
+    color: #272727;
+    display: block;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-link i {
+    font-size: 1.1rem;
+    margin-right: .75rem;
+}
+
+a.sidebar-link:hover {
+    background-color: rgba(255, 255, 255, .075);
+    border-left: 3px solid #3b7ddd;
+}
+
+.sidebar-item {
+    position: relative;
+}
+
+#sidebar:not(.expand) .sidebar-item .sidebar-dropdown {
+    position: absolute;
+    top: 0;
+    left: 70px;
+    background-color: #0e2238;
+    padding: 0;
+    min-width: 15rem;
+    display: none;
+}
+
+#sidebar:not(.expand) .sidebar-item:hover .has-dropdown+.sidebar-dropdown {
+    display: block;
+    max-height: 15em;
+    width: 100%;
+    opacity: 1;
+}
+
+#sidebar.expand .sidebar-link[data-bs-toggle="collapse"]::after {
+    border: solid;
+    border-width: 0 .075rem .075rem 0;
+    content: "";
+    display: inline-block;
+    padding: 2px;
+    position: absolute;
+    right: 1.5rem;
+    top: 1.4rem;
+    transform: rotate(-135deg);
+    transition: all .2s ease-out;
+}
+
+#sidebar.expand .sidebar-link[data-bs-toggle="collapse"].collapsed::after {
+    transform: rotate(45deg);
+    transition: all .2s ease-out;
+}
+
+
+/* .................................................... */
+#sidebar2 {
+    width: 70px;
+    min-width: 70px;
+    z-index: 1000;
+    transition: all .25s ease-in-out;
+    background-color: #ffff;
+    display: flex;
+    flex-direction: column;
+}
+
+#sidebar2.expand {
+    width: 260px;
+    min-width: 260px;
+}
+
+.toggle-btn2 {
+    background-color: transparent;
+    cursor: pointer;
+    border: 0;
+    padding: 1rem 1rem;
+}
+
+.toggle-btn2 i {
+    font-size: 1.5rem;
+    color: #007279;
+}
+
+.sidebar2-logo {
+    margin: auto 0;
+}
+
+.sidebar2-logo a {
+    color: #007279;
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+#sidebar2:not(.expand) .sidebar2-logo,
+#sidebar2:not(.expand) a.sidebar2-link span {
+    display: none;
+}
+
+.sidebar2-nav {
+    padding: 2rem 0;
+    flex: 1 1 auto;
+}
+
+/* a.sidebar2-link {
+    padding: .625rem 1.625rem;
+    color: #FFF;
+    display: block;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    border-left: 3px solid transparent;
+} */
+
+.sidebar2-link i {
+    font-size: 1.1rem;
+    margin-right: .75rem;
+}
+
+a.sidebar2-link:hover {
+    background-color: rgba(255, 255, 255, .075);
+    border-left: 3px solid #3b7ddd;
+}
+
+.sidebar2-item {
+    position: relative;
+}
+
+#sidebar2:not(.expand) .sidebar2-item .sidebar2-dropdown {
+    position: absolute;
+    top: 0;
+    left: 70px;
+    background-color: #0e2238;
+    padding: 0;
+    min-width: 15rem;
+    display: none;
+}
+
+#sidebar2:not(.expand) .sidebar2-item:hover .has-dropdown+.sidebar2-dropdown {
+    display: block;
+    max-height: 15em;
+    width: 100%;
+    opacity: 1;
+}
+
+#sidebar2.expand .sidebar2-link[data-bs-toggle="collapse"]::after {
+    border: solid;
+    border-width: 0 .075rem .075rem 0;
+    content: "";
+    display: inline-block;
+    padding: 2px;
+    position: absolute;
+    right: 1.5rem;
+    top: 1.4rem;
+    transform: rotate(-135deg);
+    transition: all .2s ease-out;
+}
+
+#sidebar2.expand .sidebar2-link[data-bs-toggle="collapse"].collapsed::after {
+    transform: rotate(45deg);
+    transition: all .2s ease-out;
+}
+
+
+/* attributes table */
+table { 
+    width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid black; 
+}
+th, td { 
+    border: 1px solid #6463636e; padding: 5px; text-align: left; color: #434343; font-size: 13px;
+}
+th { 
+    background-color: #f2f2f2; 
+}
+
+button, input, optgroup, select, textarea {
+    font-size: 13px;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+table {
+width: 100%;
+border-collapse: collapse;
+margin-top: 20px;
+border: 1px solid #6463636e;
+display: block;
+overflow-x: auto;
+white-space: nowrap;
+height: 600px;
+}
+.modal-content {
+margin-top: 7%;
+}
+
+#shapefileSelect {
+    background-color: #007279;
+    color: white;
+    width: 75%;
+}
+
+
+@media (min-width: 992px) {
+    .modal-lg, .modal-xl {
+        max-width: 70%;
+        text-align: center;
+        margin: 5% 15%;
+    }
+}

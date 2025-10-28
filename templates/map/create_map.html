@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} User Login {% endblock %}
+
+{% block head %}
+
+<title>User Login</title>
+
+{% endblock %}
+
+{% block body %}
+<div class="container1">
+    <div class="map-create-container">
+        <h1>{% if form.instance.pk %}Update Map{% else %}Create Map{% endif %}</h1>
+        <form  method="post" enctype="multipart/form-data" id="mapForm">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" class="form-control" id="title" name="title" placeholder="Title">
+                {% if form.title.errors %}
+            <div class="text-danger">
+                {% for error in form.title.errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="thumbnail">Thumbnail</label>
+                <input type="file" class="form-control-file" id="thumbnail" name="thumbnail">
+                <small id="thumbnailHelp" class="form-text text-muted">Select a thumbnail image to upload.</small>
+            </div>
+            <div class="form-group">
+                <label for="files">Files</label>
+                <div id="fileInputsContainer">
+                    <input type="file" class="form-control-file" accept=".zip, .geojson, .csv, .kml" name="files[]" multiple required>
+                </div>
+                <div style="background-color: #ff000021; padding: 5px 10px;">supported files: shapefile(.zip), Geojson, .csv, .kmz</div>
+                <button type="button" id="addFileInput" class="btn btn-secondary">Add Another File</button>
+                <small id="fileHelp" class="form-text text-muted">Select one file at a time to upload.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+        
+
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var addFileInputButton = document.getElementById('addFileInput');
+                var fileInputsContainer = document.getElementById('fileInputsContainer');
+                
+                addFileInputButton.addEventListener('click', function() {
+                    var newInput = document.createElement('input');
+                    newInput.type = 'file';
+                    newInput.name = 'files[]';
+                    newInput.classList.add('form-control-file');
+                    fileInputsContainer.appendChild(newInput);
+                });
+            });
+        </script>
+
+    <a href="">Cancel</a>
+</div>
+</div>
+
+<style>
+    button, input, optgroup, select, textarea {
+    margin: 5px;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+input.form-control-file {
+    width: 100%;
+}
+</style>
+{% endblock %}
