@@ -259,6 +259,18 @@ def is_admin_user(user):
         return False
 
 
+def test_database_connection():
+    """Test database connection and return status"""
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        return True, "Database connection successful"
+    except Exception as e:
+        return False, f"Database connection failed: {str(e)}"
+
+
 def admin_required(view_func):
     """Decorator to require admin privileges for backup views"""
     def wrapper(request, *args, **kwargs):
@@ -499,8 +511,24 @@ def restore_backup(request, backup_id):
                             restore_success = False
                 
                 if restore_success:
-                    messages.success(request, f"Backup '{backup.name}' restored successfully!")
-                    print("Restore completed successfully")
+                    # Test database connection after restore
+                    try:
+                        from django.db import connections
+                        connections.close_all()  # Force new connections
+                        
+                        # Test database connection
+                        from django.db import connection
+                        with connection.cursor() as cursor:
+                            cursor.execute("SELECT 1")
+                            cursor.fetchone()
+                        
+                        messages.success(request, f"Backup '{backup.name}' restored successfully!")
+                        print("Restore completed successfully - database connection verified")
+                        
+                    except Exception as db_error:
+                        print(f"Database connection test failed after restore: {db_error}")
+                        messages.warning(request, f"Backup '{backup.name}' restored but database connection issues detected. You may need to restart the server.")
+                        
                 else:
                     messages.error(request, f"Restore of '{backup.name}' completed with errors!")
                     print("Restore completed with errors")
@@ -748,9 +776,9 @@ def create_postgresql_dump_with_django():
         
         # Get all table names
         cursor.execute("""
-            SELECT tablename FROM pg_tables 
-            WHERE schemaname = 'public'
-            ORDER BY tablename;
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name;
         """)
         tables = cursor.fetchall()
         print(f"Found {len(tables)} tables to backup")
@@ -791,7 +819,7 @@ def create_postgresql_dump_with_django():
                         f.write("\n);\n\n")
                     
                     # Get table data
-                    cursor.execute(f"SELECT * FROM {table_name};")
+                    cursor.execute(f'SELECT * FROM "{table_name}"')
                     rows = cursor.fetchall()
                     
                     if rows:
@@ -803,8 +831,9 @@ def create_postgresql_dump_with_django():
                         """)
                         column_names = [row[0] for row in cursor.fetchall()]
                         
-                        f.write(f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES\n")
+                        f.write(f"-- Table: {table_name} ({len(rows)} rows)\n")
                         
+                        # Write INSERT statements individually for better compatibility
                         for i, row in enumerate(rows):
                             values = []
                             for value in row:
@@ -813,15 +842,19 @@ def create_postgresql_dump_with_django():
                                 elif isinstance(value, str):
                                     escaped_value = value.replace("'", "''")
                                     values.append(f"'{escaped_value}'")
+                                elif hasattr(value, 'isoformat'):  # datetime, date, time objects
+                                    values.append(f"'{value.isoformat()}'")
                                 else:
                                     values.append(str(value))
                             
-                            f.write(f"({', '.join(values)})")
-                            if i < len(rows) - 1:
-                                f.write(",\n")
-                            else:
-                                f.write(";\n\n")
+                            # Build column names with quotes
+                            quoted_columns = [f'"{col}"' for col in column_names]
+                            column_list = ', '.join(quoted_columns)
+                            values_list = ', '.join(values)
+                            
+                            f.write(f'INSERT INTO "{table_name}" ({column_list}) VALUES ({values_list});\n')
                         
+                        f.write(f"\n")
                         print(f"  - Backed up {len(rows)} rows")
                     else:
                         print(f"  - Table {table_name} is empty")
@@ -904,16 +937,44 @@ def restore_database(db_file_path, restore_type='sqlite_file'):
             
             # Close all database connections
             from django.db import connections
+            from django.core.management import call_command
+            
+            # Close connections
             for conn in connections.all():
                 conn.close()
             
             # Try using Django's database operations for PostgreSQL restore
             try:
-                return restore_postgresql_with_django(db_file_path)
+                result = restore_postgresql_with_django(db_file_path)
+                
+                # Force Django to reinitialize database connections
+                connections.close_all()
+                
+                # Run migrations to ensure database is properly set up
+                print("Running migrations after restore...")
+                call_command('migrate', verbosity=0, interactive=False)
+                
+                return result
+                
             except Exception as django_error:
                 print(f"Django-based restore failed: {django_error}")
                 print("Falling back to command-line restore...")
-                return restore_postgresql_with_commands(db_file_path)
+                
+                try:
+                    result = restore_postgresql_with_commands(db_file_path)
+                    
+                    # Force Django to reinitialize database connections
+                    connections.close_all()
+                    
+                    # Run migrations to ensure database is properly set up
+                    print("Running migrations after restore...")
+                    call_command('migrate', verbosity=0, interactive=False)
+                    
+                    return result
+                    
+                except Exception as cmd_error:
+                    print(f"Command-line restore also failed: {cmd_error}")
+                    raise cmd_error
             
         # For SQLite database
         elif settings.DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
@@ -1173,3 +1234,59 @@ def restore_media_files(media_backup_dir):
     except Exception as e:
         print(f"Media files restore failed: {e}")
         return False
+
+# Debug view for database connection
+
+from django.http import JsonResponse
+from django.db import connection
+from django.conf import settings
+
+def debug_database_connection(request):
+    """Debug view to check database connection"""
+    try:
+        # Get database settings
+        db_settings = settings.DATABASES['default']
+        
+        # Test database connection
+        with connection.cursor() as cursor:
+            # Check current database
+            cursor.execute("SELECT current_database()")
+            current_db = cursor.fetchone()[0]
+            
+            # List tables
+            cursor.execute("""
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = 'public'
+                ORDER BY table_name;
+            """)
+            tables = cursor.fetchall()
+            table_names = [t[0] for t in tables]
+            
+            # Check django_session specifically
+            if 'django_session' in table_names:
+                cursor.execute("SELECT COUNT(*) FROM django_session")
+                session_count = cursor.fetchone()[0]
+                django_session_status = f"EXISTS with {session_count} records"
+            else:
+                django_session_status = "DOES NOT EXIST"
+        
+        return JsonResponse({
+            'status': 'success',
+            'database_config': {
+                'engine': db_settings['ENGINE'],
+                'name': db_settings['NAME'],
+                'user': db_settings['USER'],
+                'host': db_settings['HOST'],
+                'port': db_settings['PORT']
+            },
+            'actual_database': current_db,
+            'tables_count': len(table_names),
+            'django_session_status': django_session_status,
+            'all_tables': table_names
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e)
+        }, status=500)
