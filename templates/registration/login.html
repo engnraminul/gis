@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} User Login {% endblock %}
+
+{% block head %}
+<title>User Login</title>
+{% endblock %}
+
+{% block body %}
+<div style="background-image: url('http://gis.vnode.digital/static/GIS-Cover-image.webp'); 
+            background-size: cover; 
+            background-position: center;
+            width: 100%; 
+            min-height: 87vh;">
+
+<div class="container d-flex align-items-center justify-content-center mx-auto" >
+    <div class="registration-form border shadow-md p-4 bg-white rounded" style="min-width: 340px; max-width: 400px; width: 100%;">
+        <h2 class="login-title text-center mb-4">Login</h2>
+        
+        {% if form.errors %}
+        <div class="alert alert-danger" role="alert">
+            {{ form.errors }}
+        </div>
+        {% endif %}
+        
+        {% for message in messages %}
+            {% if message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}
+                <div class="alert alert-success" role="alert">
+                    {{message}}
+                </div>
+            {% endif %}
+        {% endfor %}
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group mb-3">
+                <label for="id_username">{{ form.username.label_tag }}</label>
+                {{ form.username }}
+            </div>
+            <div class="form-group mb-4">
+                <label for="id_password">{{ form.password.label_tag }}</label>
+                {{ form.password }}
+            </div>
+            <div class="form-group mb-2">
+                <button type="submit" class="btn submit-button w-100">Login</button>
+            </div>
+            
+            <input type="hidden" name="next" value="{{ next }}" />
+        </form>
+    </div>
+</div>
+</div>
+
+<style>
+    .submit-button {
+        background-color: #007279;
+        color: aliceblue;
+        border: 1px solid #007279;
+    }
+    .submit-button:hover {
+        border: 1px solid #007279;
+        color: white;
+        background: #dc3545;
+    }
+    .login-title {
+        color: #dc3545;
+    }
+    a {
+        color: #007279;
+    }
+    .registration-form {
+        border: 1.5px solid #e0e0e0;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+        background: #fff;
+        border-radius: 1rem;
+    }
+    @media (max-width: 600px) {
+        .registration-form {
+            min-width: unset;
+            padding: 2rem 0.5rem;
+        }
+    }
+    .container.d-flex.align-items-center.justify-content-center.mx-auto {
+      min-height: 86.8vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Style the form fields */
+    .form-control, input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 0.25rem;
+        font-size: 1rem;
+    }
+    
+    .form-control:focus, input[type="text"]:focus, input[type="password"]:focus {
+        border-color: #007279;
+        outline: none;
+        box-shadow: 0 0 0 0.2rem rgba(0, 114, 121, 0.25);
+    }
+</style>
+{% endblock %}

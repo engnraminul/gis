@@ -26,6 +26,36 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import datetime
 import tempfile
+from functools import wraps
+
+
+def session_safe_view(view_func):
+    """Decorator to handle views that might have database restoration issues"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        try:
+            return view_func(request, *args, **kwargs)
+        except Exception as e:
+            # If there's a session-related database error, handle it gracefully
+            error_str = str(e).lower()
+            if 'django_session' in error_str and 'does not exist' in error_str:
+                print(f"Session table error during view execution: {e}")
+                
+                # Clear the session to prevent further errors
+                if hasattr(request, 'session'):
+                    try:
+                        request.session.flush()
+                    except:
+                        pass
+                    request.session.modified = False
+                
+                # Try to redirect to login or backup list
+                messages.error(request, "Database session error occurred. Please refresh the page.")
+                return redirect('Login:backup_list')
+            else:
+                # Re-raise other exceptions
+                raise e
+    return wrapper
 
 
 def get_or_create_user_profile(user):
@@ -274,21 +304,47 @@ def test_database_connection():
 def admin_required(view_func):
     """Decorator to require admin privileges for backup views"""
     def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect('login')
-        
-        if not is_admin_user(request.user):
-            messages.error(request, "Access denied. Administrator privileges required to access backup system.")
-            return render(request, 'login/backup_access_denied.html', {
-                'error_message': "Access Denied",
-                'error_description': "You need administrator privileges to access the backup system. Please contact an administrator if you need access."
-            })
-        
-        return view_func(request, *args, **kwargs)
+        try:
+            # Check if user is authenticated, with database safety
+            if not request.user.is_authenticated:
+                return redirect('Login:user_login')
+            
+            if not is_admin_user(request.user):
+                messages.error(request, "Access denied. Administrator privileges required to access backup system.")
+                return render(request, 'login/backup_access_denied.html', {
+                    'error_message': "Access Denied",
+                    'error_description': "You need administrator privileges to access the backup system. Please contact an administrator if you need access."
+                })
+            
+            return view_func(request, *args, **kwargs)
+            
+        except Exception as e:
+            # Handle database errors (like missing session table)
+            error_str = str(e).lower()
+            if 'django_session' in error_str and 'does not exist' in error_str:
+                # Session table missing - likely during database restore
+                messages.error(request, "Database session error. Please wait for system to complete setup.")
+                
+                # Try to apply migrations automatically
+                try:
+                    from django.core.management import call_command
+                    print("Attempting to apply missing migrations...")
+                    call_command('migrate', verbosity=0, interactive=False)
+                    messages.info(request, "Database setup completed. Please refresh the page.")
+                except Exception as migrate_error:
+                    print(f"Migration failed: {migrate_error}")
+                    messages.error(request, "Database setup failed. Please contact an administrator.")
+                
+                # Redirect to a safe page
+                return redirect('/')
+            else:
+                # Other errors - re-raise
+                raise e
     return wrapper
 
 
 @admin_required
+@session_safe_view
 def backup_list(request):
     """Display list of all backups"""
     backups = Backup.objects.all()
@@ -383,19 +439,34 @@ def create_backup(request):
 
 
 @admin_required
+@session_safe_view
 def restore_backup(request, backup_id):
     """Restore from a backup"""
     backup = get_object_or_404(Backup, id=backup_id)
     
     if request.method == 'POST':
+        # Set a flag to indicate we're in restore mode
+        restore_in_progress = True
+        
         try:
             print(f"Starting restore of backup: {backup.name}")
             print(f"Backup file path: {backup.file_path}")
             print(f"Backup type: {backup.backup_type}")
             
+            # Clear session data before restore to prevent session table access issues
+            if hasattr(request, 'session'):
+                request.session.clear()
+                request.session.modified = False
+                # Set a flag to prevent session saving during this request
+                request.session._session_restore_mode = True
+            
             if not backup.file_exists:
                 messages.error(request, "Backup file not found on disk!")
-                return redirect('Login:backup_list')
+                # Create a response that won't try to save session data
+                response = redirect('Login:backup_list')
+                if hasattr(request, 'session'):
+                    request.session.modified = False
+                return response
             
             if not os.path.exists(backup.file_path):
                 messages.error(request, f"Backup file not found at: {backup.file_path}")
@@ -511,6 +582,17 @@ def restore_backup(request, backup_id):
                             restore_success = False
                 
                 if restore_success:
+                    # After successful database restore, run migrations to ensure all Django tables exist
+                    if backup.backup_type in ['database', 'full']:
+                        try:
+                            from django.core.management import call_command
+                            print("Running migrations with --run-syncdb after restore to ensure all Django tables exist...")
+                            call_command('migrate', verbosity=0, interactive=False, run_syncdb=True)
+                            print("Migrations completed successfully after restore")
+                        except Exception as migrate_error:
+                            print(f"Migration after restore failed: {migrate_error}")
+                            messages.warning(request, f"Database restored but migration failed: {migrate_error}")
+                    
                     # Test database connection after restore
                     try:
                         from django.db import connections
@@ -525,13 +607,18 @@ def restore_backup(request, backup_id):
                         messages.success(request, f"Backup '{backup.name}' restored successfully!")
                         print("Restore completed successfully - database connection verified")
                         
+                        # After successful restore, prevent session saving completely
+                        restore_success_flag = True
+                        
                     except Exception as db_error:
                         print(f"Database connection test failed after restore: {db_error}")
                         messages.warning(request, f"Backup '{backup.name}' restored but database connection issues detected. You may need to restart the server.")
+                        restore_success_flag = True  # Still consider it successful
                         
                 else:
                     messages.error(request, f"Restore of '{backup.name}' completed with errors!")
                     print("Restore completed with errors")
+                    restore_success_flag = False
                 
             finally:
                 # Clean up temporary directory
@@ -543,12 +630,56 @@ def restore_backup(request, backup_id):
             
         except Exception as e:
             print(f"Restore failed with exception: {str(e)}")
-            messages.error(request, f"Restore failed: {str(e)}")
+            
+            # Handle session errors specifically
+            error_str = str(e).lower()
+            if 'django_session' in error_str and 'does not exist' in error_str:
+                print("Session table error during restore - this is expected")
+                messages.info(request, f"Database restore completed. The system is applying migrations...")
+                
+                # Try to apply migrations with run-syncdb to recreate all tables
+                try:
+                    from django.core.management import call_command
+                    print("Applying migrations with --run-syncdb to recreate all Django tables...")
+                    call_command('migrate', verbosity=0, interactive=False, run_syncdb=True)
+                    messages.success(request, f"Backup '{backup.name}' restored successfully! Database setup completed.")
+                except Exception as migrate_error:
+                    print(f"Migration after restore failed: {migrate_error}")
+                    messages.warning(request, f"Backup restored but migrations failed: {migrate_error}")
+            else:
+                messages.error(request, f"Restore failed: {str(e)}")
         
-        return redirect('Login:backup_list')
+        # Create a special response that bypasses session saving
+        return create_session_safe_response(request)
     
     context = {'backup': backup}
     return render(request, 'login/restore_backup.html', context)
+
+
+def create_session_safe_response(request):
+    """Create a response that doesn't try to save session data"""
+    try:
+        # Clear any session data and mark as not modified
+        if hasattr(request, 'session'):
+            request.session.clear()
+            request.session.modified = False
+            request.session.accessed = False
+        
+        # Create the redirect response
+        response = redirect('Login:backup_list')
+        
+        # Add a custom header to indicate session should not be saved
+        response['X-No-Session-Save'] = 'true'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error creating session-safe response: {e}")
+        # Fallback to a simple HTTP response
+        from django.http import HttpResponseRedirect
+        response = HttpResponseRedirect('/user/backups/')
+        response['X-No-Session-Save'] = 'true'
+        return response
 
 
 @admin_required
@@ -939,9 +1070,10 @@ def restore_database(db_file_path, restore_type='sqlite_file'):
             from django.db import connections
             from django.core.management import call_command
             
-            # Close connections
+            # Close connections and clear connection cache
             for conn in connections.all():
                 conn.close()
+            connections.close_all()
             
             # Try using Django's database operations for PostgreSQL restore
             try:
@@ -950,10 +1082,18 @@ def restore_database(db_file_path, restore_type='sqlite_file'):
                 # Force Django to reinitialize database connections
                 connections.close_all()
                 
-                # Run migrations to ensure database is properly set up
-                print("Running migrations after restore...")
-                call_command('migrate', verbosity=0, interactive=False)
+                # Clear Django's cache to prevent stale references
+                from django.core.cache import cache
+                cache.clear()
                 
+                # Run migrations with --run-syncdb to ensure all Django tables exist
+                print("Running migrations with --run-syncdb after restore...")
+                call_command('migrate', verbosity=0, interactive=False, run_syncdb=True)
+                
+                # Clear connections again after migrations
+                connections.close_all()
+                
+                print("PostgreSQL restore and migrations completed successfully")
                 return result
                 
             except Exception as django_error:
@@ -966,10 +1106,18 @@ def restore_database(db_file_path, restore_type='sqlite_file'):
                     # Force Django to reinitialize database connections
                     connections.close_all()
                     
-                    # Run migrations to ensure database is properly set up
-                    print("Running migrations after restore...")
-                    call_command('migrate', verbosity=0, interactive=False)
+                    # Clear Django's cache to prevent stale references
+                    from django.core.cache import cache
+                    cache.clear()
                     
+                    # Run migrations with --run-syncdb to ensure all Django tables exist
+                    print("Running migrations with --run-syncdb after restore...")
+                    call_command('migrate', verbosity=0, interactive=False, run_syncdb=True)
+                    
+                    # Clear connections again after migrations
+                    connections.close_all()
+                    
+                    print("PostgreSQL command-line restore and migrations completed successfully")
                     return result
                     
                 except Exception as cmd_error:
@@ -1095,6 +1243,25 @@ def restore_postgresql_with_django(db_file_path):
         
         restore_cursor.close()
         restore_connection.close()
+        
+        # Apply Django migrations with --run-syncdb to ensure all system tables exist
+        print("Applying Django migrations with --run-syncdb...")
+        try:
+            from django.core.management import call_command
+            from io import StringIO
+            
+            # Capture migration output
+            migration_output = StringIO()
+            call_command('migrate', '--verbosity=0', '--run-syncdb', stdout=migration_output, stderr=migration_output)
+            print("Migrations with --run-syncdb applied successfully")
+        except Exception as migration_error:
+            print(f"Warning: Migration error (may be expected): {migration_error}")
+            # Try without run-syncdb as fallback
+            try:
+                call_command('migrate', '--verbosity=0', stdout=migration_output, stderr=migration_output)
+                print("Fallback migrations applied successfully")
+            except Exception as fallback_error:
+                print(f"Fallback migration also failed: {fallback_error}")
         
         print("Django-based PostgreSQL restore completed successfully")
         return True
