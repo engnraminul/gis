@@ -441,15 +441,12 @@ def create_backup(request):
 @admin_required
 @session_safe_view
 def restore_backup(request, backup_id):
-    """Restore from a backup"""
+    """Restore from a backup using Django management command for safety"""
     backup = get_object_or_404(Backup, id=backup_id)
     
     if request.method == 'POST':
-        # Set a flag to indicate we're in restore mode
-        restore_in_progress = True
-        
         try:
-            print(f"Starting restore of backup: {backup.name}")
+            print(f"Starting Django-based restore of backup: {backup.name}")
             print(f"Backup file path: {backup.file_path}")
             print(f"Backup type: {backup.backup_type}")
             
@@ -457,12 +454,10 @@ def restore_backup(request, backup_id):
             if hasattr(request, 'session'):
                 request.session.clear()
                 request.session.modified = False
-                # Set a flag to prevent session saving during this request
                 request.session._session_restore_mode = True
             
             if not backup.file_exists:
                 messages.error(request, "Backup file not found on disk!")
-                # Create a response that won't try to save session data
                 response = redirect('Login:backup_list')
                 if hasattr(request, 'session'):
                     request.session.modified = False
@@ -481,166 +476,70 @@ def restore_backup(request, backup_id):
                 messages.error(request, "Backup file is corrupted or not a valid ZIP file!")
                 return redirect('Login:backup_list')
             
-            # Inspect backup file for debugging
-            inspect_backup_file(backup.file_path)
-            
-            # Extract backup
-            temp_dir = tempfile.mkdtemp()
-            print(f"Extracting backup to: {temp_dir}")
-            
+            # Use Django management command for safe restore
             try:
-                with zipfile.ZipFile(backup.file_path, 'r') as zipf:
-                    zipf.extractall(temp_dir)
+                from django.core.management import call_command
+                from io import StringIO
                 
-                # List extracted files
-                extracted_files = []
-                for root, dirs, files in os.walk(temp_dir):
-                    for file in files:
-                        extracted_files.append(os.path.join(root, file))
-                print(f"Extracted files: {extracted_files}")
+                # Capture command output
+                output_buffer = StringIO()
                 
-                restore_success = True
+                print("Using Django management command for safe restore...")
                 
-                # Restore database if backup includes it
-                if backup.backup_type in ['database', 'full']:
-                    db_file_db = os.path.join(temp_dir, 'database.db')
-                    db_file_sql = os.path.join(temp_dir, 'database.sql')
-                    
-                    print(f"Looking for database files:")
-                    print(f"  SQLite file: {db_file_db} - exists: {os.path.exists(db_file_db)}")
-                    print(f"  SQL file: {db_file_sql} - exists: {os.path.exists(db_file_sql)}")
-                    
-                    database_restored = False
-                    
-                    # For PostgreSQL, always use SQL dump
-                    if settings.DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
-                        if os.path.exists(db_file_sql):
-                            print("Found database.sql file for PostgreSQL, attempting restore...")
-                            if restore_database(db_file_sql, 'sql_dump'):
-                                database_restored = True
-                                print("PostgreSQL database restored successfully")
-                            else:
-                                restore_success = False
-                                messages.error(request, "PostgreSQL database restore failed!")
-                        elif os.path.exists(db_file_db):
-                            # This might be a backup from when system was using SQLite
-                            print("Found database.db file, but PostgreSQL needs SQL. Attempting conversion...")
-                            messages.warning(request, "Backup contains SQLite database but system uses PostgreSQL. Database restore skipped.")
-                            print("Warning: SQLite backup found but PostgreSQL system - skipping database restore")
-                        else:
-                            print("No database.sql file found in backup for PostgreSQL")
-                            if backup.backup_type == 'database':
-                                messages.error(request, "No PostgreSQL database file found in backup!")
-                                restore_success = False
-                            else:  # backup_type == 'full'
-                                messages.warning(request, "No database file found in backup, but media files may be restored.")
-                    
-                    # For SQLite, prefer .db file but fall back to .sql
-                    else:
-                        if os.path.exists(db_file_db):
-                            print("Found database.db file, attempting restore...")
-                            if restore_database(db_file_db, 'sqlite_file'):
-                                database_restored = True
-                                print("SQLite database restored successfully")
-                            else:
-                                restore_success = False
-                                messages.error(request, "Database restore failed!")
-                        elif os.path.exists(db_file_sql):
-                            print("Found database.sql file, attempting restore...")
-                            if restore_database(db_file_sql, 'sql_dump'):
-                                database_restored = True
-                                print("SQLite database restored successfully")
-                            else:
-                                restore_success = False
-                                messages.error(request, "Database restore failed!")
-                        else:
-                            print("No database file found in backup")
-                            if backup.backup_type == 'database':
-                                messages.error(request, "No database file found in backup!")
-                                restore_success = False
-                            else:  # backup_type == 'full'
-                                messages.warning(request, "No database file found in backup, but media files may be restored.")
-                    
-                    if database_restored:
-                        messages.success(request, "Database restored successfully!")
-                    elif backup.backup_type == 'database' and not database_restored:
-                        print("Database backup type but no database restored - this is an error")
-                        restore_success = False
+                # Determine restore options based on user choice
+                preserve_users = request.POST.get('preserve_users', False)
+                force = request.POST.get('force_restore', True)  # Default to force for now
                 
-                # Restore media files if backup includes them
-                if backup.backup_type in ['media', 'full']:
-                    media_dir = os.path.join(temp_dir, 'media')
-                    if os.path.exists(media_dir):
-                        print("Found media directory, attempting restore...")
-                        if not restore_media_files(media_dir):
-                            restore_success = False
-                            messages.error(request, "Media files restore failed!")
-                    else:
-                        print("No media directory found in backup")
-                        if backup.backup_type == 'media':
-                            messages.error(request, "No media files found in backup!")
-                            restore_success = False
+                # Build command arguments
+                cmd_args = [backup_id]
+                if preserve_users:
+                    cmd_args.append('--preserve-users')
+                if force:
+                    cmd_args.append('--force')
                 
-                if restore_success:
-                    # After successful database restore, run migrations to ensure all Django tables exist
-                    if backup.backup_type in ['database', 'full']:
-                        try:
-                            from django.core.management import call_command
-                            print("Running migrations with --run-syncdb after restore to ensure all Django tables exist...")
-                            call_command('migrate', verbosity=0, interactive=False, run_syncdb=True)
-                            print("Migrations completed successfully after restore")
-                        except Exception as migrate_error:
-                            print(f"Migration after restore failed: {migrate_error}")
-                            messages.warning(request, f"Database restored but migration failed: {migrate_error}")
-                    
-                    # Test database connection after restore
-                    try:
-                        from django.db import connections
-                        connections.close_all()  # Force new connections
-                        
-                        # Test database connection
-                        from django.db import connection
-                        with connection.cursor() as cursor:
-                            cursor.execute("SELECT 1")
-                            cursor.fetchone()
-                        
-                        messages.success(request, f"Backup '{backup.name}' restored successfully!")
-                        print("Restore completed successfully - database connection verified")
-                        
-                        # After successful restore, prevent session saving completely
-                        restore_success_flag = True
-                        
-                    except Exception as db_error:
-                        print(f"Database connection test failed after restore: {db_error}")
-                        messages.warning(request, f"Backup '{backup.name}' restored but database connection issues detected. You may need to restart the server.")
-                        restore_success_flag = True  # Still consider it successful
-                        
+                # Call the safe restore command
+                call_command(
+                    'restore_backup_safe',
+                    *cmd_args,
+                    stdout=output_buffer
+                )
+                
+                # Get command output
+                command_output = output_buffer.getvalue()
+                print(f"Restore command output: {command_output}")
+                
+                # Check if restore was successful
+                if "restored successfully" in command_output.lower():
+                    messages.success(request, f"Backup '{backup.name}' restored successfully using Django ORM!")
+                    messages.info(request, "All Django system tables preserved. Data restored safely.")
+                    print("Django-based restore completed successfully")
                 else:
-                    messages.error(request, f"Restore of '{backup.name}' completed with errors!")
-                    print("Restore completed with errors")
-                    restore_success_flag = False
+                    messages.warning(request, f"Restore completed. Check the output for details.")
+                    if command_output:
+                        # Show some output to user
+                        output_lines = command_output.split('\n')[:5]  # First 5 lines
+                        for line in output_lines:
+                            if line.strip():
+                                messages.info(request, line.strip())
                 
-            finally:
-                # Clean up temporary directory
-                try:
-                    shutil.rmtree(temp_dir)
-                    print(f"Cleaned up temp directory: {temp_dir}")
-                except:
-                    print(f"Failed to clean up temp directory: {temp_dir}")
-            
+            except Exception as cmd_error:
+                print(f"Django command restore failed: {cmd_error}")
+                messages.error(request, f"Django restore failed: {str(cmd_error)}")
+                
+                # Show error details to help debugging
+                messages.error(request, "Please check the terminal for detailed error information.")
+        
         except Exception as e:
             print(f"Restore failed with exception: {str(e)}")
-            
-            # Handle session errors specifically
             error_str = str(e).lower()
-            if 'django_session' in error_str and 'does not exist' in error_str:
-                print("Session table error during restore - this is expected")
-                messages.info(request, f"Database restore completed. The system is applying migrations...")
+            
+            if 'django_session' in error_str or 'auth_user' in error_str:
+                print("Session or auth table error during restore")
+                messages.info(request, f"Database restore completed. Applying safety migrations...")
                 
-                # Try to apply migrations with run-syncdb to recreate all tables
                 try:
                     from django.core.management import call_command
-                    print("Applying migrations with --run-syncdb to recreate all Django tables...")
+                    print("Applying migrations with --run-syncdb...")
                     call_command('migrate', verbosity=0, interactive=False, run_syncdb=True)
                     messages.success(request, f"Backup '{backup.name}' restored successfully! Database setup completed.")
                 except Exception as migrate_error:
